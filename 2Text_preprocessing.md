@@ -564,19 +564,19 @@ After preprocessing, traditional machine learning models need a numerical repres
 
 Three important approaches are:
 
-[14. Natural Language Processing — Machine Learning for Socio-Economic and Georeferenced Data](https://images.openai.com/static-rsc-4/zhmnm7mtnHKR5CUhW233dnsRIhtVc1Egtwe4Id1YQ_pXg95tHjzVzwh24oIGGPapru7GbFPJOaCEwQkSQGoasz0IyToIdtLB_DPMGAfrDNvG5AoGbQpPrMgRgSN-aA52wzRrVEyftdYzJMkFwHeNNvPywUf66QAaHE33V5bj9X9N80CFzsOQRZuEORuTISRz?purpose=fullsize)
+[14. Natural Language Processing — Machine Learning for Socio-Economic and Georeferenced Data](bow.jpg)
 
 Bag of Words (BoW)
 
 Represents documents using word counts. It is simple and useful for traditional text classification.
 
-[Introduction to Term Frequency — Inverse Document Frequency(TF-IDF) in Natural Language Processing (NLP) | by Dinesh Chandra Kumawat | Medium](https://images.openai.com/static-rsc-4/l1sf81ZDJSpYkhstEZPQQ1ou9RGA2yg61qIrPV8cvr7JHoaAEIrL0YUgMjWzPAz1Sj0m77YAWFJXNtw6K0Mcq5Ea2iAK92wEJMu6kOvcnVROVEnpYecdqzL4JQLsPpFcLaRvTOz0kCdxdFtvCFAB1XzGe0ANab3Y7jbPVua5oupiC1vkiHdSKA_U630d6jBw?purpose=fullsize)
+[Introduction to Term Frequency — Inverse Document Frequency(TF-IDF) in Natural Language Processing (NLP) | by Dinesh Chandra Kumawat | Medium](tf_idf.jpg)
 
 TF-IDF
 
 Weights words according to their frequency in a document and how common they are across the document collection.
 
-[Embeddings - Comprehensive Guide](https://images.openai.com/static-rsc-4/bsg45rL9rT1pmckDnYOWeuIJPJMPXONix3soWU0T2xkVnXW3kyl7EFPcbgCwgpQjTW1vqHWoVYsk7H5JcgxnqiK-Vr5KukuO2_Ugm2AtT3wKEbTKYpKPvHKEDjTaRnXkWtpKTgKaiE3BojzJodzetEADlfhgnaGGv3NEgiLh7RIewXeiE9baX6WvEI2x8qH7?purpose=fullsize)
+[Embeddings - Comprehensive Guide](tokenization.jpg)
 
 Token IDs and embeddings
 
@@ -633,4 +633,130 @@ For BERT, for example, use the tokenizer associated with the pretrained checkpoi
 | TF-IDF                | Convert text to weighted numerical features | Documents → feature matrix         |
 | Subword tokenization  | Split words into model vocabulary pieces    | Word → model-specific subwords     |
 
-Recommended next step in your NLP learning: Study Bag of Words, n-grams, and TF-IDF after preprocessing. These concepts will help you understand how cleaned text becomes numerical data for machine learning models. Then move to transformer tokenizers and Hugging Face.
+# Chat Words Conversion in NLP
+
+Chat words conversion is a text preprocessing technique that converts informal words, abbreviations, slang, and short forms used in chats or social media into their standard forms.
+
+People frequently use shortened words when texting, such as `u`, `ur`, `btw`, `idk`, and `gonna`. These forms can create vocabulary inconsistencies in traditional NLP systems.
+
+For example:
+
+| Chat word | Standard form                       |
+| --------- | ----------------------------------- |
+| `u`       | you                                 |
+| `ur`      | your / you're, depending on context |
+| `r`       | are                                 |
+| `u r`     | you are                             |
+| `btw`     | by the way                          |
+| `idk`     | I don't know                        |
+| `imo`     | in my opinion                       |
+| `omg`     | oh my God                           |
+| `thx`     | thanks                              |
+| `pls`     | please                              |
+| `b4`      | before                              |
+| `gr8`     | great                               |
+| `gonna`   | going to                            |
+| `wanna`   | want to                             |
+| `kinda`   | kind of                             |
+| `asap`    | as soon as possible                 |
+| `brb`     | be right back                       |
+| `ttyl`    | talk to you later                   |
+| `lol`     | laughing out loud                   |
+| `smh`     | shaking my head                     |
+
+The exact meaning of some abbreviations depends on context. For example, `ur` could mean your or you're, so replacing it blindly can introduce errors.
+
+## 1. Why is chat word conversion important?
+
+Consider these sentences:
+
+```
+Original:  "I luv NLP. U r gr8!"
+Converted: "I love NLP. You are great!"
+```
+
+Conversion can help traditional NLP systems recognize that different spellings express similar meanings.
+
+It can be useful for:
+
+- Sentiment analysis of social media posts.
+- Spam detection.
+- Chatbot development.
+- Text classification.
+- Analysis of customer reviews.
+- Processing informal messages.
+
+However, conversion is optional. Modern transformer models may already understand many common abbreviations, and preserving the original text can sometimes produce better results.
+
+## 2. Implementing chat word conversion in Python
+
+A simple and practical approach is to create a dictionary mapping informal expressions to standard forms.
+
+```
+import rechat_words = {    "u": "you",    "r": "are",    "ur": "your",    "btw": "by the way",    "idk": "i do not know",    "imo": "in my opinion",    "omg": "oh my god",    "thx": "thanks",    "pls": "please",    "plz": "please",    "b4": "before",    "gr8": "great",    "asap": "as soon as possible",    "brb": "be right back",    "ttyl": "talk to you later",    "gonna": "going to",    "wanna": "want to",    "kinda": "kind of"}def convert_chat_words(text):    words = text.split()    converted_words = []    for word in words:        # Separate surrounding punctuation        match = re.fullmatch(            r"([^\w]*)([\w']+)([^\w]*)",            word        )        if match:            prefix, core, suffix = match.groups()            replacement = chat_words.get(core.lower(), core)            converted_words.append(                prefix + replacement + suffix            )        else:            converted_words.append(word)    return " ".join(converted_words)text = "BTW, u r gr8! Pls help me ASAP."print(convert_chat_words(text))
+```
+
+Output:
+
+```
+by the way, you are great! please help me as soon as possible.
+```
+
+This example illustrates dictionary-based conversion. For production use, punctuation, capitalization, contractions, and ambiguous abbreviations should be handled more carefully.
+
+## 3. Handling context-dependent chat words
+
+Some abbreviations have multiple meanings.
+
+| Chat word | Possible meanings                                     |
+| --------- | ----------------------------------------------------- |
+| `ur`      | your / you're                                         |
+| `rn`      | right now / registered nurse                          |
+| `jk`      | just kidding / initials                               |
+| `bc`      | because / British Columbia                            |
+| `lol`     | laughing out loud / a general conversational reaction |
+
+A simple dictionary cannot always choose the correct expansion. For example:
+
+- `ur phone` → `your phone`
+- `ur coming` → `you're coming`
+
+For accurate conversion, use context-aware rules or a language model rather than relying exclusively on direct replacements.
+
+## 4. A better preprocessing order
+
+For a traditional NLP pipeline, you can generally follow this sequence:
+
+Raw chat text
+
+"OMG, u r gr8!"
+
+Chat word conversion
+
+"oh my god, you are great!"
+
+Normalization and cleaning
+
+Standardize case and whitespace
+
+Tokenization
+
+["oh", "my", "god", "you", "are", "great"]
+
+Feature extraction or model input
+
+The exact order can vary. For example, tokenization may be needed before applying a more sophisticated chat normalization dictionary.
+
+## 5. Practice: convert these chat messages
+
+Write the standard form of each message.
+
+1\. \`idk what u mean\`
+
+2\. \`brb, ttyl\`
+
+3\. \`thx, pls reply asap\`
+
+Show answers
+
+Key takeaway: Chat word conversion uses a dictionary, rules, or contextual language models to transform informal expressions into standard text. It is particularly useful for traditional NLP preprocessing, but ambiguous expressions should not be expanded without considering context.
