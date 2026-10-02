@@ -302,3 +302,335 @@ An uncommon word such as `unhappiness` might be divided into smaller pieces. The
 Subword tokenization helps models handle rare words and new word forms without needing an independent vocabulary entry for every possible word.
 
 Important: When using pretrained transformer models, use the tokenizer associated with the model instead of manually splitting words and assuming the results will match.
+
+## 6. Stop-word removal
+
+Stop words are frequent words that some NLP applications treat as less informative.
+
+Examples include:
+
+```
+the, is, am, are, of, in, to, and, a
+```
+
+Original tokens:
+
+```
+["this", "is", "a", "very", "useful", "book"]
+```
+
+After removing selected stop words:
+
+```
+["very", "useful", "book"]
+```
+
+### Python implementation using NLTK
+
+```
+import nltkfrom nltk.corpus import stopwordsfrom nltk.tokenize import word_tokenizenltk.download("stopwords")nltk.download("punkt_tab")text = "This is a very useful book about NLP."tokens = word_tokenize(text)stop_words = set(stopwords.words("english"))filtered_tokens = [    word for word in tokens    if word.lower() not in stop_words]print(filtered_tokens)
+```
+
+### Why can stop-word removal be dangerous?
+
+Consider these sentences:
+
+```
+I like this movie.
+I do not like this movie.
+```
+
+If `not` is removed, the second sentence loses its negation and may be interpreted incorrectly.
+
+Therefore:
+
+- Preserve negation for sentiment analysis.
+- Avoid indiscriminate stop-word removal for question answering.
+- Evaluate whether stop-word removal helps traditional classification.
+- Generally avoid manual stop-word removal when using pretrained transformers.
+
+## 7. Stemming
+
+Stemming reduces a word to an approximate stem, often by removing suffixes according to predefined rules.
+
+| Word       | Possible stem |
+| ---------- | ------------- |
+| playing    | play          |
+| played     | play          |
+| studies    | studi         |
+| connected  | connect       |
+| relational | relat         |
+
+A stem does not necessarily need to be a valid dictionary word.
+
+### Porter Stemmer
+
+```
+from nltk.stem import PorterStemmerstemmer = PorterStemmer()words = [    "playing",    "played",    "plays",    "studies",    "connected"]for word in words:    print(word, "->", stemmer.stem(word))
+```
+
+The Porter stemmer applies a sequence of rules to transform word forms.
+
+### Advantages
+
+- Computationally inexpensive.
+- Reduces vocabulary size.
+- Can group related word forms.
+- May be useful for search and traditional text classification.
+
+### Disadvantages
+
+- May generate invalid words.
+- May merge words that differ in meaning.
+- Does not fully understand grammar or context.
+
+## 8. Lemmatization
+
+Lemmatization converts a word to its dictionary base form, called its lemma.
+
+| Word     | Lemma                           |
+| -------- | ------------------------------- |
+| running  | run                             |
+| ran      | run                             |
+| children | child                           |
+| mice     | mouse                           |
+| studies  | study                           |
+| was      | be                              |
+| better   | good, when used as an adjective |
+
+Unlike stemming, lemmatization attempts to produce a valid lexical form.
+
+### Python implementation using spaCy
+
+Install spaCy and its English language model:
+
+```
+pip install spacy
+python -m spacy download en_core_web_sm
+```
+
+Code:
+
+```
+import spacynlp = spacy.load("en_core_web_sm")text = "The children were running and playing games."doc = nlp(text)for token in doc:    print(token.text, "->", token.lemma_)
+```
+
+Typical output:
+
+```
+The -> the
+children -> child
+were -> be
+running -> run
+and -> and
+playing -> play
+games -> game
+```
+
+Exact output depends on the installed model.
+
+### Stemming versus lemmatization
+
+| Feature                | Stemming                   | Lemmatization                            |
+| ---------------------- | -------------------------- | ---------------------------------------- |
+| Method                 | Rule-based transformations | Linguistic analysis                      |
+| Output                 | Approximate stem           | Dictionary lemma                         |
+| Valid word guaranteed? | No                         | Aims for valid lexical form              |
+| Grammatical context    | Usually unnecessary        | Often helpful                            |
+| Speed                  | Generally faster           | Generally more computationally expensive |
+| Example                | studies → studi            | studies → study                          |
+
+Use stemming when lightweight normalization is sufficient. Consider lemmatization when meaningful word forms matter. Neither method is required for every NLP task.
+
+## 9. Handling contractions and spelling variations
+
+Contractions are shortened word forms:
+
+| Contraction | Expanded form |
+| ----------- | ------------- |
+| don't       | do not        |
+| isn't       | is not        |
+| I'm         | I am          |
+| they're     | they are      |
+| we've       | we have       |
+| can't       | cannot        |
+
+Example:
+
+```
+text = "I don't think it's a bad idea."text = text.replace("don't", "do not")text = text.replace("it's", "it is")print(text)
+```
+
+Output:
+
+```
+I do not think it is a bad idea.
+```
+
+This is a simple example, not a complete contraction-expansion system. Some contractions are ambiguous, and replacing them without considering context can introduce errors.
+
+Informal text can also contain repeated characters:
+
+```
+soooo happy
+goooood
+```
+
+A simple rule for reducing repeated characters:
+
+```
+import retext = "This movie is sooo goooood!"normalized = re.sub(r"(.)\1{2,}", r"\1\1", text)print(normalized)
+```
+
+Output:
+
+```
+This movie is soo good!
+```
+
+Spell correction and repeated-character normalization can help with some social media data, but they may damage names, slang, technical words, and multilingual text.
+
+## 10. Handling emojis, hashtags, and social media text
+
+Consider:
+
+```
+I love this movie 😍
+This is terrible 😡
+#MachineLearning
+```
+
+Emojis may communicate sentiment, so removing them may reduce useful information.
+
+Hashtags can sometimes be segmented into words:
+
+```
+#NaturalLanguageProcessing
+```
+
+Possible normalized form:
+
+```
+Natural Language Processing
+```
+
+For social media preprocessing, you might replace usernames and URLs with placeholders:
+
+```
+import redef clean_social_text(text):    text = re.sub(        r"https?://\S+|www\.\S+",        " URL ",        text    )    text = re.sub(        r"@\w+",        " USER_MENTION ",        text    )    text = re.sub(r"\s+", " ", text).strip()    return texttext = (    "Amazing tutorial! Follow @someone "    "at https://example.com 😊")print(clean_social_text(text))
+```
+
+Output:
+
+```
+Amazing tutorial! Follow USER_MENTION at URL 😊
+```
+
+Notice that the emoji and punctuation are preserved.
+
+## 11. Complete traditional preprocessing pipeline in Python
+
+The following implementation combines several techniques into one reusable function.
+
+It is designed as an illustrative English text-classification pipeline, not as a universal solution.
+
+```
+import reimport unicodedataimport spacyfrom bs4 import BeautifulSoupnlp = spacy.load("en_core_web_sm")# Preserve negation wordsSTOP_WORDS = nlp.Defaults.stop_words - {    "no", "not", "never"}def preprocess_text(text):    # 1. Normalize Unicode    text = unicodedata.normalize("NFC", text)    # 2. Extract text from HTML    text = BeautifulSoup(        text, "html.parser"    ).get_text(" ")    # 3. Replace URLs    text = re.sub(        r"https?://\S+|www\.\S+",        " URL ",        text    )    # 4. Replace email addresses    text = re.sub(        r"\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b",        " EMAIL ",        text    )    # 5. Normalize case    text = text.lower()    # 6. Normalize whitespace    text = re.sub(r"\s+", " ", text).strip()    # 7. Tokenize and lemmatize    doc = nlp(text)    tokens = []    for token in doc:        # Remove punctuation and whitespace        if token.is_punct or token.is_space:            continue        # Remove selected stop words        if token.text in STOP_WORDS:            continue        # Append lemma        tokens.append(token.lemma_)    return tokenstext = """<p>I am NOT enjoying this movie!!!</p>Visit https://example.com for more information."""print(preprocess_text(text))
+```
+
+Install the required packages:
+
+```
+pip install spacy beautifulsoup4
+python -m spacy download en_core_web_sm
+```
+
+### Understanding the pipeline
+
+1. Unicode normalization standardizes certain character representations.
+2. HTML extraction removes markup while retaining readable content.
+3. URLs and emails are replaced with placeholders.
+4. Lowercasing standardizes capitalization.
+5. Whitespace normalization removes repeated spacing.
+6. spaCy performs tokenization and linguistic processing.
+7. Selected stop words are removed, while negation is preserved.
+8. Lemmatization converts word forms to base forms.
+
+One limitation is that the example removes punctuation, including repeated exclamation marks. That may not be desirable for sentiment analysis. You should compare this pipeline with a less aggressive version that preserves punctuation and emojis.
+
+## 12. Converting text into numerical features
+
+After preprocessing, traditional machine learning models need a numerical representation.
+
+Three important approaches are:
+
+[14. Natural Language Processing — Machine Learning for Socio-Economic and Georeferenced Data](https://images.openai.com/static-rsc-4/zhmnm7mtnHKR5CUhW233dnsRIhtVc1Egtwe4Id1YQ_pXg95tHjzVzwh24oIGGPapru7GbFPJOaCEwQkSQGoasz0IyToIdtLB_DPMGAfrDNvG5AoGbQpPrMgRgSN-aA52wzRrVEyftdYzJMkFwHeNNvPywUf66QAaHE33V5bj9X9N80CFzsOQRZuEORuTISRz?purpose=fullsize)
+
+Bag of Words (BoW)
+
+Represents documents using word counts. It is simple and useful for traditional text classification.
+
+[Introduction to Term Frequency — Inverse Document Frequency(TF-IDF) in Natural Language Processing (NLP) | by Dinesh Chandra Kumawat | Medium](https://images.openai.com/static-rsc-4/l1sf81ZDJSpYkhstEZPQQ1ou9RGA2yg61qIrPV8cvr7JHoaAEIrL0YUgMjWzPAz1Sj0m77YAWFJXNtw6K0Mcq5Ea2iAK92wEJMu6kOvcnVROVEnpYecdqzL4JQLsPpFcLaRvTOz0kCdxdFtvCFAB1XzGe0ANab3Y7jbPVua5oupiC1vkiHdSKA_U630d6jBw?purpose=fullsize)
+
+TF-IDF
+
+Weights words according to their frequency in a document and how common they are across the document collection.
+
+[Embeddings - Comprehensive Guide](https://images.openai.com/static-rsc-4/bsg45rL9rT1pmckDnYOWeuIJPJMPXONix3soWU0T2xkVnXW3kyl7EFPcbgCwgpQjTW1vqHWoVYsk7H5JcgxnqiK-Vr5KukuO2_Ugm2AtT3wKEbTKYpKPvHKEDjTaRnXkWtpKTgKaiE3BojzJodzetEADlfhgnaGGv3NEgiLh7RIewXeiE9baX6WvEI2x8qH7?purpose=fullsize)
+
+Token IDs and embeddings
+
+Neural NLP models convert tokenizer output into numerical IDs and learned vector representations.
+
+### TF-IDF example
+
+```
+from sklearn.feature_extraction.text import TfidfVectorizerdocuments = [    "NLP is interesting",    "Machine learning is interesting",    "I am learning NLP"]vectorizer = TfidfVectorizer()X = vectorizer.fit_transform(documents)print(vectorizer.get_feature_names_out())print(X.shape)print(X.toarray())
+```
+
+The resulting matrix can be passed to a traditional machine learning model, such as logistic regression or Naive Bayes.
+
+For a real project, split your dataset first, fit the vectorizer only on the training data, and transform the validation and test data with the fitted vectorizer.
+
+## 13. Traditional NLP versus transformer preprocessing
+
+| Operation              | Traditional ML with TF-IDF  | Transformer models              |
+| ---------------------- | --------------------------- | ------------------------------- |
+| Lowercasing            | Often useful                | Depends on the model            |
+| Stop-word removal      | Sometimes useful            | Usually avoid                   |
+| Stemming               | Sometimes useful            | Usually avoid                   |
+| Lemmatization          | Sometimes useful            | Usually avoid                   |
+| Word tokenization      | Common                      | Use the model's tokenizer       |
+| Subword tokenization   | Not needed for basic TF-IDF | Common                          |
+| Padding and truncation | Not needed for basic TF-IDF | Common for neural inputs        |
+| Attention masks        | Not applicable              | Used by many transformer models |
+
+For BERT, for example, use the tokenizer associated with the pretrained checkpoint. It may generate token IDs, special tokens, and attention masks. Do not assume that manually removing stop words or stemming words will improve the model.
+
+## 14. Common mistakes to avoid
+
+- Removing `not`, `never`, and other meaningful words.
+- Removing all punctuation without considering the task.
+- Assuming stemming and lemmatization are interchangeable.
+- Applying English-specific rules to Nepali or other languages.
+- Applying transformations that remove information needed by the model.
+- Fitting vocabulary or feature statistics on the full dataset before splitting.
+- Assuming more preprocessing always improves accuracy.
+- Applying traditional preprocessing blindly to pretrained transformers.
+
+## 15. Quick revision table
+
+| Technique             | Purpose                                     | Example                            |
+| --------------------- | ------------------------------------------- | ---------------------------------- |
+| HTML removal          | Extract readable text                       | `<b>NLP</b>` → `NLP`               |
+| URL handling          | Remove or normalize links                   | URL → `URL`                        |
+| Lowercasing           | Standardize case                            | `NLP` → `nlp`                      |
+| Tokenization          | Split text into units                       | `learn NLP` → `["learn", "NLP"]`   |
+| Stop-word removal     | Remove selected frequent words              | Remove `the` where appropriate     |
+| Stemming              | Produce approximate stems                   | `studies` → `studi`                |
+| Lemmatization         | Find dictionary base forms                  | `was` → `be`                       |
+| Unicode normalization | Standardize character representations       | Normalize equivalent Unicode forms |
+| TF-IDF                | Convert text to weighted numerical features | Documents → feature matrix         |
+| Subword tokenization  | Split words into model vocabulary pieces    | Word → model-specific subwords     |
+
+Recommended next step in your NLP learning: Study Bag of Words, n-grams, and TF-IDF after preprocessing. These concepts will help you understand how cleaned text becomes numerical data for machine learning models. Then move to transformer tokenizers and Hugging Face.
