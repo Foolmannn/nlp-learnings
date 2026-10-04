@@ -693,3 +693,421 @@ The context may be:
 The model uses the context to predict:
 
 `sits`
+
+### CBOW architecture
+
+Context words
+
+The · cat · on · the · mat
+
+Embedding / context aggregation
+
+Predicted target
+
+## sits
+
+The architecture learns word vectors that help predict words from their contexts.
+
+## 8.2 Skip-gram
+
+Skip-gram does the opposite: it uses a target word to predict surrounding context words.
+
+For the same sentence, if the target word is `sits`, the model tries to predict context words such as:
+
+- `The`
+- `cat`
+- `on`
+- `the`
+- `mat`
+
+### Skip-gram architecture
+
+Target word
+
+## sits
+
+Learned word embedding
+
+Predicted context
+
+The · cat · on · the · mat
+
+### CBOW vs. Skip-gram
+
+| Property   | CBOW                               | Skip-gram                               |
+| ---------- | ---------------------------------- | --------------------------------------- |
+| Input      | Surrounding words                  | Target word                             |
+| Prediction | Target word                        | Context words                           |
+| Training   | Often efficient                    | Can be more computationally intensive   |
+| Common use | Frequent words, efficient training | Learning useful vectors for rarer words |
+| Main goal  | Learn embeddings from context      | Learn embeddings from context           |
+
+These are general tendencies, not guarantees for every dataset or implementation.
+
+## 8.3 How Word2Vec learns relationships
+
+Word2Vec learns to predict words from context using an objective function. During training, its vector parameters are updated to improve those predictions.
+
+Words that occur in similar contexts tend to acquire similar vectors.
+
+For example:
+
+- `Paris` and `London` may have similar contexts.
+- `running` and `walking` may have similar contexts.
+- `happy` and `joyful` may have similar contexts.
+
+A famous property of some Word2Vec models is that vector arithmetic can reflect certain relationships, such as the approximate analogy:
+
+\\[ v\_{\text{king}}-v\_{\text{man}}+v\_{\text{woman}} \approx v\_{\text{queen}} \\]
+
+This is an empirical tendency, not a guaranteed mathematical law.
+
+## 8.4 Implementing Word2Vec
+
+You can use the `gensim` library.
+
+Install it if needed:
+
+```
+pip install gensim
+```
+
+Example:
+
+```
+from gensim.models import Word2Vecsentences = [    ["i", "love", "nlp"],    ["i", "love", "python"],    ["python", "is", "useful"],    ["nlp", "is", "interesting"],    ["machine", "learning", "is", "useful"]]model = Word2Vec(    sentences=sentences,    vector_size=50,    window=3,    min_count=1,    workers=1,    sg=1,    epochs=100,    seed=42)# Vector representation of a wordvector = model.wv["python"]print(vector)print(vector.shape)# Similar wordsprint(model.wv.most_similar("python", topn=3))
+```
+
+### Explanation of important parameters
+
+- `sentences`: tokenized training sentences.
+- `vector_size=50`: each word embedding has 50 dimensions.
+- `window=3`: context window size.
+- `min_count=1`: include words appearing at least once.
+- `sg=1`: use Skip-gram; `sg=0` selects CBOW.
+- `epochs=100`: number of training passes.
+- `seed=42`: helps reproducibility.
+
+Important: This is a tiny demonstration corpus, not enough to train reliable real-world embeddings. The similarity results will be unstable or uninformative because the dataset is so small.
+
+## 8.5 Limitations of Word2Vec
+
+- Each word generally receives one fixed vector.
+- It struggles with unseen words.
+- It does not naturally represent multiple meanings of a word in different contexts.
+- Results depend on training data.
+- Training from scratch requires sufficient text.
+
+For example, traditional Word2Vec assigns the same vector to `bank` in:
+
+- `I deposited money in the bank.`
+- `We sat on the river bank.`
+
+It does not produce a different embedding for each use.
+
+# 9. GloVe (Global Vectors for Word Representation)
+
+GloVe is another method for learning word embeddings.
+
+Unlike the predictive Word2Vec objectives, GloVe uses global word co-occurrence statistics.
+
+It builds a word-word co-occurrence matrix that records how often words appear near one another throughout a corpus. It then learns vectors whose relationships capture useful patterns in these statistics.
+
+### Example
+
+Suppose a large corpus frequently contains:
+
+- `doctor` near `hospital`, `patient`, `nurse`.
+- `school` near `student`, `teacher`, `classroom`.
+- `football` near `player`, `goal`, `team`.
+
+GloVe uses these global co-occurrence patterns to learn word vectors.
+
+## Word2Vec vs. GloVe
+
+| Property             | Word2Vec                                        | GloVe                                           |
+| -------------------- | ----------------------------------------------- | ----------------------------------------------- |
+| Main learning signal | Predict context or target words                 | Global co-occurrence statistics                 |
+| Representation       | Dense word vectors                              | Dense word vectors                              |
+| Contextual?          | No, conventional model uses one vector per word | No, conventional model uses one vector per word |
+| Unseen words         | Usually problematic                             | Usually problematic                             |
+| Common applications  | Semantic similarity, NLP features               | Semantic similarity, NLP features               |
+
+Both are static word embedding techniques. Neither dynamically changes a word's representation based on its sentence.
+
+# 10. FastText
+
+FastText extends the idea of word embeddings by representing words using character-level subword information.
+
+Instead of relying only on a whole-word vector, it uses character n-grams to construct word representations.
+
+For example, the word:
+
+`playing`
+
+might be associated with character pieces such as:
+
+- `pla`
+- `lay`
+- `ayi`
+- `yin`
+- `ing`
+
+FastText learns vectors for these subword units and combines them to represent a word.
+
+## Why is FastText useful?
+
+Consider these words:
+
+- play
+- playing
+- played
+- player
+
+They share related character patterns. FastText can use these shared subword units to help learn related representations.
+
+It can also construct representations for many words that were not seen as complete words during training, provided their character n-grams are available.
+
+### Advantages
+
+- Better handling of rare words in many settings.
+- Can generate vectors for many out-of-vocabulary words.
+- Useful for morphologically rich languages.
+- Captures some word-form similarities.
+
+### Limitations
+
+- Shared spelling does not always mean shared meaning.
+- It remains a static embedding method.
+- It does not inherently understand full sentence context.
+
+### Summary of classic embeddings
+
+| Method   | Main idea                                  | Handles subwords?    | Context-specific word vectors? |
+| -------- | ------------------------------------------ | -------------------- | ------------------------------ |
+| Word2Vec | Predictive context learning                | Not in standard form | No                             |
+| GloVe    | Global co-occurrence statistics            | Not in standard form | No                             |
+| FastText | Word vectors built using character n-grams | Yes                  | No                             |
+
+# 11. Document embeddings and sentence embeddings
+
+Word embeddings represent individual words. But many NLP applications need one vector for an entire sentence, paragraph, or document.
+
+For example, in semantic search, we may need to compare:
+
+- `How do I reset my password?`
+- `I forgot my login credentials.`
+
+The wording differs, but the meanings are similar.
+
+A document or sentence representation can help compare them.
+
+## 11.1 Averaging word embeddings
+
+The simplest approach is to average the vectors of the words in a sentence.
+
+Suppose:
+
+\\[ v\_{\text{good}}=[1,0] \\]
+
+\\[ v\_{\text{movie}}=[0,2] \\]
+
+Then the sentence vector for `good movie` is:
+
+\\[ v\_{\text{sentence}}= \frac{v\_{\text{good}}+v\_{\text{movie}}}{2} \\]
+
+\\[ v\_{\text{sentence}}=[0.5,1] \\]
+
+This method produces one fixed-size vector per sentence.
+
+### Python example
+
+```
+import numpy as npword_vectors = {    "good": np.array([1.0, 0.0]),    "movie": np.array([0.0, 2.0])}words = ["good", "movie"]sentence_vector = np.mean(    [word_vectors[word] for word in words],    axis=0)print(sentence_vector)
+```
+
+Output:
+
+```
+[0.5 1. ]
+```
+
+Real embeddings have many more dimensions.
+
+### Limitation
+
+Averaging loses word order. It may also dilute the effect of important words and handle negation poorly.
+
+For example, `good movie` and `not good movie` may end up with vectors that are too similar.
+
+## 11.2 Doc2Vec
+
+Doc2Vec extends word embedding approaches to learn fixed-size representations of documents.
+
+It was designed to learn document vectors that capture useful information about document content.
+
+Potential uses include:
+
+- Document similarity.
+- Document clustering.
+- Document classification.
+- Retrieval and organization.
+
+Unlike simple averaging, Doc2Vec learns document-specific parameters during training.
+
+## 11.3 Sentence Transformers
+
+Sentence-transformer models generate embeddings intended to capture sentence-level semantic similarity.
+
+They are particularly useful for:
+
+- Semantic search.
+- Finding similar movie descriptions.
+- FAQ matching.
+- Duplicate question detection.
+- Recommendation systems.
+- Clustering similar documents.
+
+A simplified example using the `sentence-transformers` library:
+
+```
+pip install sentence-transformers
+```
+
+```
+from sentence_transformers import SentenceTransformerfrom sklearn.metrics.pairwise import cosine_similaritysentences = [    "A man travels through space.",    "An astronaut explores the universe.",    "A chef prepares delicious food."]model = SentenceTransformer(    "sentence-transformers/all-MiniLM-L6-v2")embeddings = model.encode(sentences)print(embeddings.shape)similarity = cosine_similarity(embeddings)print(similarity)
+```
+
+This model typically produces a 384-dimensional embedding for each input sentence.
+
+The output matrix has three rows because there are three sentences. The cosine similarity matrix is \\(3\times3\\), with diagonal values of 1 for nonzero vectors.
+
+The exact off-diagonal values depend on the model and input text.
+
+### Why this matters for your movie recommender
+
+You can represent each movie using its overview, genres, and keywords. Then compare the resulting sentence or document embeddings.
+
+For example, a movie about a space mission and another about astronauts exploring distant planets may receive similar embeddings even if they use different words.
+
+That is an important advantage over raw word counts alone.
+
+# 12. Contextual embeddings and transformer models
+
+Traditional word embeddings such as Word2Vec, GloVe, and FastText generally assign one fixed vector to each word.
+
+Modern contextual models generate representations based on the surrounding text.
+
+This is a major development in NLP.
+
+## 12.1 The problem of multiple meanings
+
+Consider these two sentences:
+
+1. `She deposited money in the bank.`
+2. `They sat on the bank of the river.`
+
+The word `bank` has different meanings.
+
+A static embedding model gives `bank` the same learned word vector in both sentences.
+
+A contextual model can produce different representations because it considers the surrounding words.
+
+## 12.2 ELMo
+
+ELMo stands for Embeddings from Language Models.
+
+It generates contextual word representations using a deep bidirectional language model, historically based on LSTMs.
+
+It considers context from both directions in the sentence.
+
+For example:
+
+- `bank` near `money`, `deposit`, and `account`.
+- `bank` near `river`, `water`, and `shore`.
+
+These contexts influence the representation produced for the word.
+
+## 12.3 BERT
+
+BERT stands for Bidirectional Encoder Representations from Transformers.
+
+BERT uses a transformer encoder to learn contextual representations.
+
+Unlike conventional static embeddings, BERT's output for a token depends on other tokens in the input sequence.
+
+Example:
+
+`The animal did not cross the road because it was tired.`
+
+The representation of `it` can use information from the surrounding words. This allows contextual models to learn relationships that simple word-frequency methods cannot directly express.
+
+BERT is used for tasks such as:
+
+- Text classification.
+- Named entity recognition.
+- Question answering.
+- Sentence-pair classification.
+- Extracting contextual token features.
+
+BERT's original pretraining included masked language modeling and next-sentence prediction; many later models use different objectives.
+
+## 12.4 How a transformer produces representations
+
+A simplified transformer-based NLP pipeline is:
+
+Input text
+
+"The movie was surprisingly good."
+
+Tokenizer
+
+Convert text into tokens and token IDs
+
+Input embeddings
+
+Token, positional, and sometimes segment information
+
+Transformer layers
+
+Self-attention and feed-forward processing
+
+Contextual representations
+
+Vectors influenced by the surrounding tokens
+
+### What is self-attention?
+
+Self-attention allows each token's representation to incorporate information from other tokens in the input sequence.
+
+For example, in:
+
+`The movie was not good`
+
+the representation of `good` can be influenced by `not`.
+
+This helps a transformer model learn relationships that are not captured by a unigram bag of words.
+
+However, the model's final representation does not automatically guarantee correct sentiment understanding; it depends on the model, task, and training.
+
+## 12.5 Token embeddings vs. sentence embeddings
+
+These are not the same thing.
+
+Token embeddings: one vector for each input token.
+
+If the tokenizer produces 5 tokens and the hidden dimension is 768, the last hidden layer may have shape:
+
+\\[ (5,768) \\]
+
+Batch dimensions and special tokens may add additional positions.
+
+Sentence embeddings: one vector representing the whole sentence, often obtained by pooling token representations or using a model trained for sentence-level similarity.
+
+For example, a sentence-transformer model may output:
+
+\\[ (384,) \\]
+
+for one sentence.
+
+A standard BERT model does not automatically produce the best semantic sentence embedding simply by taking an arbitrary token vector. Pooling strategy and training objective matter.
