@@ -1111,3 +1111,424 @@ For example, a sentence-transformer model may output:
 for one sentence.
 
 A standard BERT model does not automatically produce the best semantic sentence embedding simply by taking an arbitrary token vector. Pooling strategy and training objective matter.
+
+# 13. Tokenization and subword tokenization
+
+Before many text vectorization methods can work, the text must be divided into tokens.
+
+A token may be a word, part of a word, punctuation, or another unit depending on the tokenizer.
+
+Consider:
+
+`I am learning NLP!`
+
+Word-level tokenization might produce:
+
+```
+["I", "am", "learning", "NLP", "!"]
+```
+
+A transformer tokenizer may split some words into subword pieces instead.
+
+For example, an unfamiliar word might be divided into smaller pieces that the tokenizer already knows.
+
+## Why do modern models use subword tokenization?
+
+Suppose the model encounters a rare word such as:
+
+`unbelievability`
+
+A subword tokenizer may represent it using familiar pieces rather than requiring a unique vocabulary entry for the entire word.
+
+Common subword methods include:
+
+- Byte Pair Encoding (BPE).
+- WordPiece.
+- SentencePiece-based tokenization.
+
+Subword tokenization helps manage vocabulary size and represent many rare or previously unseen word forms.
+
+Important distinction: Tokenization creates token units or token IDs. Embedding layers then map token IDs into vectors. These are related steps, but they are not the same operation.
+
+# 14. Other useful feature extraction techniques
+
+Not all NLP features must be learned embeddings. In traditional ML pipelines, manually designed and statistical features can be very useful.
+
+## 14.1 Text length features
+
+Possible features include:
+
+- Number of characters.
+- Number of words.
+- Average word length.
+- Number of sentences.
+- Number of uppercase characters.
+- Number of punctuation marks.
+- Number of exclamation marks.
+- Number of digits.
+
+For example, a spam detection model may find that message length, URLs, and unusual punctuation provide useful additional information.
+
+```
+import redef extract_text_features(text):    words = text.split()    return {        "character_count": len(text),        "word_count": len(words),        "average_word_length": (            sum(len(word) for word in words) / len(words)            if words else 0        ),        "exclamation_count": text.count("!"),        "question_count": text.count("?"),        "digit_count": sum(char.isdigit() for char in text),        "uppercase_count": sum(char.isupper() for char in text),        "url_count": len(            re.findall(r"https?://\S+|www\.\S+", text)        )    }text = "WIN a prize now!!! Visit https://example.com"features = extract_text_features(text)print(features)
+```
+
+These features can be combined with TF-IDF features using an appropriate scikit-learn pipeline or feature union.
+
+## 14.2 Lexicon-based sentiment features
+
+A sentiment lexicon associates words with sentiment values or categories.
+
+For a simple lexicon:
+
+```
+sentiment_lexicon = {    "good": 1,    "excellent": 2,    "happy": 1,    "bad": -1,    "terrible": -2,    "sad": -1}def sentiment_score(text):    words = text.lower().split()    return sum(        sentiment_lexicon.get(word.strip(".,!?"), 0)        for word in words    )print(sentiment_score("The movie was excellent"))print(sentiment_score("The movie was terrible"))
+```
+
+This produces positive and negative numerical scores, respectively.
+
+However, this simple method does not reliably handle negation, sarcasm, or context:
+
+`The movie was not good.`
+
+A lexicon-based score may incorrectly classify this sentence as positive because it sees `good` but does not account for `not`.
+
+More sophisticated lexicon methods and learned models can handle some of these cases better.
+
+## 14.3 POS tags and syntactic features
+
+Part-of-speech (POS) tagging identifies grammatical categories such as:
+
+- Noun.
+- Verb.
+- Adjective.
+- Adverb.
+- Pronoun.
+
+For example:
+
+`The beautiful girl sings well.`
+
+A POS tagger might identify `beautiful` as an adjective and `sings` as a verb.
+
+Possible features include:
+
+- Number of nouns.
+- Number of verbs.
+- Adjective frequency.
+- Specific grammatical patterns.
+- Dependency relations between words.
+
+These can be useful in linguistic analysis, information extraction, and specialized classification tasks.
+
+## 14.4 Named entities
+
+Named entity recognition (NER) identifies items such as:
+
+- Person names.
+- Organizations.
+- Locations.
+- Dates.
+- Monetary amounts.
+
+For example:
+
+`Suman visited Kathmandu in October.`
+
+A named entity model may extract `Kathmandu` as a location and `October` as a date-related entity.
+
+These extracted values can become structured features for downstream systems.
+
+# 15. Feature extraction vs. feature selection
+
+These two terms are frequently confused.
+
+Feature extraction creates or derives features from the raw input.
+
+Examples:
+
+- Converting documents into TF-IDF vectors.
+- Generating embeddings.
+- Extracting text length and punctuation counts.
+- Generating character n-grams.
+
+Feature selection chooses a subset of existing features based on their usefulness.
+
+Examples:
+
+- Removing rare terms.
+- Selecting the highest-scoring features using chi-square.
+- Keeping the top \\(k\\) features according to a statistical criterion.
+
+For example, a TF-IDF vectorizer may generate 50,000 features. A feature-selection method may keep only the 5,000 most useful features for a classification task.
+
+Feature selection can reduce computational cost and sometimes improve generalization.
+
+## Example using scikit-learn
+
+```
+from sklearn.feature_extraction.text import TfidfVectorizerfrom sklearn.feature_selection import SelectKBest, chi2documents = [    "free prize claim now",    "win money today",    "meeting scheduled tomorrow",    "project meeting tomorrow",    "claim your free reward",    "the project meeting is ready"]labels = [1, 1, 0, 0, 1, 0]  # 1 = spam, 0 = not spamvectorizer = TfidfVectorizer()X = vectorizer.fit_transform(documents)selector = SelectKBest(score_func=chi2, k=3)X_selected = selector.fit_transform(X, labels)selected_features = vectorizer.get_feature_names_out()[    selector.get_support()]print("Original shape:", X.shape)print("Selected shape:", X_selected.shape)print("Selected features:", selected_features)
+```
+
+This illustrates feature selection using chi-square scores. The selected terms depend on the supplied data.
+
+In a real evaluation workflow, fit both the vectorizer and feature selector on the training set only. Do not use the test labels to select features.
+
+# 16. Comparison of the main text representation methods
+
+The following table is useful for revision and choosing an approach for a project.
+
+| Method               | Representation                 | Captures word frequency?         | Captures semantic similarity inherently? | Context-dependent?                          |
+| -------------------- | ------------------------------ | -------------------------------- | ---------------------------------------- | ------------------------------------------- |
+| One-hot              | Sparse binary vector           | No                               | No                                       | No                                          |
+| BoW                  | Sparse count vector            | Yes                              | No                                       | No                                          |
+| N-grams              | Sparse sequence-feature vector | Yes, for sequences               | No                                       | No                                          |
+| TF-IDF               | Sparse weighted vector         | Yes, weighted                    | No                                       | No                                          |
+| Word2Vec             | Dense word vector              | Indirectly through training      | Often captures useful similarity         | No                                          |
+| GloVe                | Dense word vector              | Through co-occurrence statistics | Often captures useful similarity         | No                                          |
+| FastText             | Dense subword-informed vector  | Through training                 | Often captures useful similarity         | No                                          |
+| Averaged embeddings  | Dense sentence/document vector | Indirectly                       | Often                                    | No, not inherently                          |
+| Doc2Vec              | Dense document vector          | Through training                 | Potentially                              | Document-specific, but not token-contextual |
+| BERT                 | Contextual token vectors       | Learned from pretraining         | Can capture semantic relationships       | Yes                                         |
+| Sentence Transformer | Dense sentence vector          | Learned from training            | Designed to capture sentence similarity  | Yes, during encoding                        |
+
+“Captures semantic similarity” does not mean a method will always understand meaning correctly. Performance depends on the vocabulary, corpus, architecture, and task.
+
+# 17. Practical comparison using one example
+
+Consider three movie descriptions:
+
+Movie A
+
+A space explorer travels to a distant planet to save humanity.
+
+Movie B
+
+An astronaut journeys across the galaxy to protect the human race.
+
+Movie C
+
+A chef opens a restaurant and learns to cook traditional food.
+
+We want to find which movie is most similar to Movie A.
+
+## Using BoW
+
+Movie A and Movie B share some words, such as `to`, while many semantically related words differ:
+
+- `space explorer` vs. `astronaut`
+- `distant planet` vs. `galaxy`
+- `save humanity` vs. `protect the human race`
+
+Their BoW similarity may be limited because the actual word overlap is limited.
+
+## Using TF-IDF
+
+TF-IDF adjusts word importance across the movie descriptions. It may improve comparisons when informative terms overlap, but it still does not inherently recognize synonyms.
+
+## Using Word2Vec or FastText
+
+A model trained on a suitable corpus may represent words such as `astronaut` and `space` in ways that reflect related contexts.
+
+However, aggregating static word vectors into a single movie vector can still lose word order and some sentence-level meaning.
+
+## Using a sentence transformer
+
+A suitable sentence embedding model can place Movie A and Movie B closer together because it is designed to capture semantic similarity across sentences.
+
+Movie C should generally be less similar because its subject is different.
+
+The actual ranking depends on the model and text. These are illustrative expectations, not measured scores.
+
+# 18. Measuring similarity between text vectors
+
+Once we have vectorized documents, we often need to compare their similarity.
+
+A common metric is cosine similarity.
+
+It measures the cosine of the angle between two nonzero vectors.
+
+\\[ \operatorname{cosine\\\_similarity}(A,B)= \frac{A\cdot B}{\\|A\\|\\|B\\|} \\]
+
+Where:
+
+- \\(A\cdot B\\) is the dot product.
+- \\(\\|A\\|\\) is the magnitude of vector \\(A\\).
+- \\(\\|B\\|\\) is the magnitude of vector \\(B\\).
+
+For normalized, nonzero vectors, a similarity near 1 indicates similar directions, a value near 0 indicates orthogonality, and a value near -1 indicates opposite directions.
+
+TF-IDF and sentence embeddings are both commonly compared using cosine similarity, although their similarity scores have different interpretations.
+
+## Python example
+
+```
+from sklearn.feature_extraction.text import TfidfVectorizerfrom sklearn.metrics.pairwise import cosine_similaritydocuments = [    "space explorer saves humanity",    "astronaut protects the human race",    "chef cooks traditional food"]vectorizer = TfidfVectorizer()X = vectorizer.fit_transform(documents)similarity_matrix = cosine_similarity(X)print(similarity_matrix)
+```
+
+The result is a \\(3\times3\\) matrix.
+
+- The diagonal entries are 1 for these nonempty document vectors.
+- The off-diagonal entries show pairwise cosine similarity.
+- Documents with no overlapping TF-IDF terms can have a similarity of zero.
+
+For this example, the similarity between the first two descriptions may remain low because the descriptions share few exact vocabulary terms. That limitation is a reason to investigate semantic embeddings.
+
+# 19. Common mistakes in NLP vectorization
+
+These are important when implementing real ML projects.
+
+## 19.1 Fitting the vectorizer on the complete dataset
+
+Incorrect:
+
+```
+X = vectorizer.fit_transform(all_documents)# Split after vectorization
+```
+
+This allows information from the test corpus to influence vocabulary construction, feature selection, and potentially IDF statistics.
+
+Correct approach:
+
+```
+from sklearn.model_selection import train_test_splitfrom sklearn.feature_extraction.text import TfidfVectorizerX_train_text, X_test_text, y_train, y_test = train_test_split(    documents,    labels,    test_size=0.2,    random_state=42,    stratify=labels)vectorizer = TfidfVectorizer()X_train = vectorizer.fit_transform(X_train_text)X_test = vectorizer.transform(X_test_text)
+```
+
+The vectorizer is fitted on training documents and then used to transform test documents.
+
+## 19.2 Removing every stop word
+
+Words such as `the`, `is`, and `and` are often removed because they occur frequently.
+
+However, words such as `not` can be essential for sentiment.
+
+For example:
+
+- `good`
+- `not good`
+
+Removing `not` can destroy an important distinction.
+
+Stop-word removal should depend on the task.
+
+## 19.3 Ignoring text cleaning requirements
+
+Depending on the dataset, preprocessing may include:
+
+- Unicode normalization.
+- Lowercasing.
+- Removing HTML tags.
+- Normalizing URLs.
+- Handling emojis.
+- Expanding contractions.
+- Fixing repeated characters.
+
+But preprocessing should not be applied blindly. Removing punctuation, emojis, or special tokens can destroy valuable information.
+
+## 19.4 Assuming more dimensions always means better performance
+
+A vocabulary with 100,000 TF-IDF features is not automatically better than one with 20,000 features.
+
+Likewise, a larger embedding model is not guaranteed to outperform a smaller model for every task.
+
+Model choice should be evaluated using a suitable validation strategy and task-specific metrics.
+
+## 19.5 Using static word embeddings when context matters
+
+If a word has different meanings in different sentences, static embeddings may be insufficient.
+
+Contextual embeddings may be more appropriate when the task requires interpreting sentence meaning, negation, or word relationships.
+
+# 20. End-to-end NLP example: text classification
+
+Let's combine preprocessing, TF-IDF, and machine learning into one practical pipeline.
+
+Our goal is to classify movie reviews as positive or negative.
+
+```
+from sklearn.model_selection import train_test_splitfrom sklearn.pipeline import Pipelinefrom sklearn.feature_extraction.text import TfidfVectorizerfrom sklearn.linear_model import LogisticRegressionfrom sklearn.metrics import accuracy_score, classification_reportreviews = [    "This movie is amazing and wonderful",    "I love this excellent movie",    "The film is fantastic",    "This movie is terrible and boring",    "I hate this awful film",    "The movie is disappointing",    "What a great and enjoyable story",    "The worst film I have ever watched",    "Brilliant acting and excellent story",    "Poor acting and a boring story"]labels = [    "positive",    "positive",    "positive",    "negative",    "negative",    "negative",    "positive",    "negative",    "positive",    "negative"]X_train, X_test, y_train, y_test = train_test_split(    reviews,    labels,    test_size=0.3,    random_state=42,    stratify=labels)model = Pipeline([    (        "tfidf",        TfidfVectorizer(            ngram_range=(1, 2),            max_features=5000        )    ),    (        "classifier",        LogisticRegression(max_iter=1000)    )])model.fit(X_train, y_train)predictions = model.predict(X_test)print("Accuracy:", accuracy_score(y_test, predictions))print(classification_report(y_test, predictions, zero_division=0))new_reviews = [    "The movie was fantastic",    "The film was boring and terrible"]print(model.predict(new_reviews))
+```
+
+### How this pipeline works
+
+1. `train_test_split()` separates training data from test data.
+2. `TfidfVectorizer` learns the training vocabulary and TF-IDF statistics.
+3. `ngram_range=(1, 2)` allows unigrams and bigrams.
+4. `LogisticRegression` learns a classification boundary from the vectors.
+5. `Pipeline` ensures the vectorizer is fitted only on the training portion and reused when making predictions.
+6. `predict()` converts new text using the fitted vectorizer and predicts the label.
+
+Important: This dataset is intentionally tiny for demonstration. Its test accuracy is not a meaningful estimate of real-world performance. For a real sentiment classifier, use a larger, representative dataset and a suitable evaluation strategy.
+
+# 21. How to choose the right method
+
+The best representation depends on your task, dataset size, computational resources, and performance requirements.
+
+BoW / TF-IDF
+
+Best starting point for many traditional NLP classification and retrieval tasks.
+
+Examples: spam detection, sentiment classification, document categorization, keyword matching.
+
+Word or character n-grams
+
+Useful when phrases, word order, spelling patterns, or morphology matter.
+
+Examples: negation-sensitive text classification, noisy social media text, language identification.
+
+Word2Vec / GloVe / FastText
+
+Useful when you want dense word-level features, especially when using a suitable pretrained embedding.
+
+Examples: similarity, linguistic features, lightweight NLP models.
+
+BERT and other contextual models
+
+Useful when language meaning depends strongly on context and complex relationships.
+
+Examples: question answering, named entity recognition, contextual classification.
+
+Sentence-transformer embeddings
+
+A strong starting point for semantic similarity and retrieval.
+
+Examples: semantic search, FAQ matching, duplicate detection, movie recommendation.
+
+For your current NLP learning path, I recommend mastering the methods in this order:
+
+1. Tokenization and vocabulary construction.
+2. One-hot encoding.
+3. Bag of Words using `CountVectorizer`.
+4. N-gram vectorization.
+5. TF-IDF using `TfidfVectorizer`.
+6. Cosine similarity and document retrieval.
+7. Word2Vec, GloVe, and FastText.
+8. Sentence embeddings.
+9. Transformer tokenization and BERT contextual representations.
+10. Combining text features with traditional ML models and evaluating the results.
+
+This order helps you understand why each more sophisticated technique was developed.
+
+# 22. Quick revision notes
+
+| Concept               | Remember this                                                  |
+| --------------------- | -------------------------------------------------------------- |
+| Text representation   | Encoding text into a computer-processable form                 |
+| Vectorization         | Converting text into numerical vectors                         |
+| Feature extraction    | Deriving useful numerical features from text                   |
+| One-hot encoding      | One unique vector position per category or word                |
+| BoW                   | Counts vocabulary terms in each document                       |
+| N-grams               | Capture short sequences of adjacent tokens                     |
+| TF-IDF                | Weights terms by their frequency and corpus-wide rarity        |
+| Word2Vec              | Learns dense word vectors using predictive context objectives  |
+| GloVe                 | Learns dense word vectors from global co-occurrence statistics |
+| FastText              | Uses character n-grams to represent words                      |
+| Doc2Vec               | Learns document-level vectors                                  |
+| Contextual embeddings | Word/token representations depend on surrounding text          |
+| BERT                  | Transformer encoder producing contextual token representations |
+| Sentence embeddings   | Fixed-size vectors designed to represent sentence meaning      |
+| Cosine similarity     | Measures the angular similarity between two nonzero vectors    |
+| Feature selection     | Selects useful features from an existing feature set           |
+
+
+Final takeaway: Traditional methods such as BoW and TF-IDF primarily represent word occurrence and statistical importance. Word embeddings learn useful relationships between words, while contextual and sentence embeddings provide richer representations that depend on the surrounding text. Understanding these differences is the foundation for building effective NLP applications.
