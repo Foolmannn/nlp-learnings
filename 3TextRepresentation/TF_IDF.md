@@ -1043,3 +1043,731 @@ This is called:
 > **Data leakage**
 
 ---
+
+# 23. TF-IDF with N-grams
+
+TF-IDF can also work with N-grams.
+
+For unigrams:
+
+```python
+vectorizer = TfidfVectorizer(
+    ngram_range=(1, 1)
+)
+```
+
+Unigrams + bigrams:
+
+```python
+vectorizer = TfidfVectorizer(
+    ngram_range=(1, 2)
+)
+```
+
+Unigrams + bigrams + trigrams:
+
+```python
+vectorizer = TfidfVectorizer(
+    ngram_range=(1, 3)
+)
+```
+
+For example:
+
+```python
+documents = [
+    "machine learning is powerful",
+    "deep learning is powerful"
+]
+
+vectorizer = TfidfVectorizer(
+    ngram_range=(1, 2)
+)
+
+X = vectorizer.fit_transform(documents)
+```
+
+Features include:
+
+```text
+machine
+learning
+powerful
+deep
+
+machine learning
+learning is
+is powerful
+deep learning
+```
+
+So:
+
+```text
+TF-IDF
++
+N-grams
+```
+
+is a very powerful classical text representation approach.
+
+---
+
+# 24. TF-IDF vs Bag of Words
+
+| Feature | BoW | TF-IDF |
+|---|---|---|
+| Represents text numerically | Yes | Yes |
+| Uses word frequency | Yes | Yes |
+| Considers document frequency | No | Yes |
+| Gives importance to rare words | No | Yes |
+| Reduces weight of common words | No | Yes |
+| Sparse | Yes | Yes |
+| Easy to interpret | Yes | Yes |
+| Can use N-grams | Yes | Yes |
+| Semantic understanding | No | No |
+
+The key difference:
+
+```text
+BoW:
+"How many times does the word occur?"
+
+TF-IDF:
+"How important is this word to this document?"
+```
+
+---
+
+# 25. TF-IDF vs Word Embeddings
+
+TF-IDF:
+
+```text
+machine → [0, 0.45, 0, ...]
+learning → [0, 0, 0.31, ...]
+```
+
+Each word/document is represented according to frequency statistics.
+
+It does **not understand meaning**.
+
+For example:
+
+```text
+car
+automobile
+vehicle
+```
+
+are separate features.
+
+Word embeddings can represent semantic relationships:
+
+```text
+car
+automobile
+vehicle
+```
+
+as vectors that are closer in semantic space.
+
+So:
+
+```text
+TF-IDF
+→ statistical representation
+```
+
+while:
+
+```text
+Word2Vec / GloVe / FastText
+→ distributed semantic representation
+```
+
+and:
+
+```text
+BERT / Transformer embeddings
+→ contextual semantic representation
+```
+
+---
+
+# 26. Important Limitations of TF-IDF
+
+## 1. No semantic understanding
+
+It doesn't know:
+
+```text
+car ≈ automobile
+```
+
+---
+
+## 2. Ignores word order
+
+These:
+
+```text
+dog bites man
+```
+
+and:
+
+```text
+man bites dog
+```
+
+can have very similar TF-IDF representations.
+
+---
+
+## 3. High dimensionality
+
+Large vocabulary means:
+
+```text
+large number of features
+```
+
+---
+
+## 4. Sparse vectors
+
+Most dimensions are zero.
+
+---
+
+## 5. No contextual meaning
+
+The word:
+
+```text
+bank
+```
+
+has the same representation whether it means:
+
+```text
+river bank
+```
+
+or:
+
+```text
+financial bank
+```
+
+unless surrounding words are represented through additional features such as n-grams.
+
+---
+
+## 6. Vocabulary problem
+
+A word unseen during training won't have a learned feature.
+
+---
+
+# 27. Advantages of TF-IDF
+
+### 1. Simple
+
+Easy to implement and understand.
+
+### 2. Fast
+
+Much cheaper than many modern neural approaches.
+
+### 3. Effective
+
+It can perform surprisingly well for:
+
+- Text classification
+- Spam detection
+- Search engines
+- Information retrieval
+- Document similarity
+- Recommendation systems
+- Keyword extraction
+- News classification
+
+### 4. Interpretable
+
+You can inspect which terms receive high weights.
+
+### 5. Strong baseline
+
+Before using complicated deep-learning models, TF-IDF is often an excellent baseline.
+
+---
+
+# 28. TF-IDF for Search Engines
+
+Suppose someone searches:
+
+```text
+"machine learning tutorial"
+```
+
+A search system can compare the query's TF-IDF vector with document TF-IDF vectors.
+
+Conceptually:
+
+```text
+Query
+ ↓
+TF-IDF
+ ↓
+Query vector
+ ↓
+Cosine similarity
+ ↓
+Compare with document vectors
+ ↓
+Rank documents
+```
+
+Documents containing important query terms receive higher similarity.
+
+---
+
+# 29. TF-IDF for Keyword Extraction
+
+Suppose a document is:
+
+```text
+"Machine learning is a field of artificial intelligence.
+Machine learning algorithms can learn patterns from data."
+```
+
+Words such as:
+
+```text
+machine
+learning
+algorithms
+patterns
+data
+```
+
+may receive relatively high scores depending on the document collection.
+
+The highest-weight terms can be used as potential keywords.
+
+---
+
+# 30. TF-IDF for Movie Recommendation
+
+This is particularly relevant to a content-based movie recommender.
+
+Suppose movie descriptions are:
+
+```text
+Movie A:
+"superhero fights villain and saves city"
+
+Movie B:
+"superhero battles villain and saves world"
+
+Movie C:
+"romantic couple falls in love"
+```
+
+We can combine textual information:
+
+```text
+title
+overview
+genres
+keywords
+cast
+```
+
+Then:
+
+```text
+Movie metadata
+      ↓
+Text preprocessing
+      ↓
+TF-IDF
+      ↓
+TF-IDF matrix
+      ↓
+Cosine similarity
+      ↓
+Similar movies
+```
+
+This is one of the classic ways to build a **content-based recommender system**.
+
+---
+
+# 31. Full TF-IDF Pipeline
+
+Remember this:
+
+```text
+                  DOCUMENTS
+                      │
+                      ▼
+              Text Preprocessing
+                      │
+                      ▼
+                  Tokenization
+                      │
+                      ▼
+                 Vocabulary
+                      │
+             ┌────────┴────────┐
+             ▼                 ▼
+        Term Frequency     Document Frequency
+             │                 │
+             │                 ▼
+             │               IDF
+             │                 │
+             └────────┬────────┘
+                      ▼
+                   TF × IDF
+                      │
+                      ▼
+               TF-IDF Matrix
+                      │
+             ┌────────┴─────────┐
+             ▼                  ▼
+       ML Classification   Similarity Search
+                              │
+                              ▼
+                       Recommendation
+```
+
+---
+
+# 32. A Small Python Experiment
+
+You can actually inspect TF-IDF manually:
+
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+documents = [
+    "cat likes milk",
+    "cat likes fish",
+    "dog likes fish"
+]
+
+vectorizer = TfidfVectorizer()
+
+X = vectorizer.fit_transform(documents)
+
+print("Vocabulary:")
+print(vectorizer.get_feature_names_out())
+
+print("\nTF-IDF Matrix:")
+print(X.toarray())
+```
+
+You can also inspect the matrix as a DataFrame:
+
+```python
+import pandas as pd
+
+df = pd.DataFrame(
+    X.toarray(),
+    columns=vectorizer.get_feature_names_out()
+)
+
+print(df)
+```
+
+This is a very good exercise because you'll see that:
+
+```text
+likes
+```
+
+gets a relatively lower importance than terms that distinguish the documents.
+
+---
+
+# 33. A Very Important Concept: TF-IDF Is Corpus-Dependent
+
+This is often overlooked.
+
+The TF-IDF score of a word depends on the **entire document collection**.
+
+For example:
+
+```text
+machine
+```
+
+might have high IDF in one dataset.
+
+But if almost every document in another dataset discusses machine learning:
+
+```text
+machine
+```
+
+will have low IDF.
+
+Therefore:
+
+> **TF-IDF is not an inherent property of a word. Its value depends on the corpus.**
+
+---
+
+# 34. One More Important Point
+
+TF-IDF does **not mean that rare words are always important**.
+
+Suppose a document contains a typo:
+
+```text
+"machine learnning algorithm"
+```
+
+`learnning` might be extremely rare.
+
+Therefore it can get a high IDF.
+
+But it isn't actually useful.
+
+So:
+
+```text
+Rare ≠ automatically meaningful
+```
+
+This is one reason preprocessing and vocabulary filtering are important.
+
+---
+
+# 35. Useful Parameters in `TfidfVectorizer`
+
+You should know these:
+
+```python
+TfidfVectorizer(
+    lowercase=True,
+    stop_words=None,
+    ngram_range=(1, 1),
+    max_features=None,
+    min_df=1,
+    max_df=1.0,
+    sublinear_tf=False
+)
+```
+
+### `lowercase`
+
+```python
+lowercase=True
+```
+
+Converts:
+
+```text
+Machine
+```
+
+to:
+
+```text
+machine
+```
+
+---
+
+### `stop_words`
+
+```python
+stop_words="english"
+```
+
+can remove common English stopwords.
+
+---
+
+### `ngram_range`
+
+```python
+ngram_range=(1, 2)
+```
+
+means:
+
+```text
+unigrams + bigrams
+```
+
+---
+
+### `max_features`
+
+```python
+max_features=5000
+```
+
+keeps only a maximum of 5,000 features.
+
+Useful when the vocabulary is huge.
+
+---
+
+### `min_df`
+
+```python
+min_df=2
+```
+
+means a term must appear in at least 2 documents.
+
+Rare terms can therefore be removed.
+
+---
+
+### `max_df`
+
+```python
+max_df=0.9
+```
+
+can ignore terms appearing in more than 90% of documents.
+
+This is useful for removing extremely common terms.
+
+---
+
+# 36. `sublinear_tf`
+
+Normally:
+
+\[
+TF=f
+\]
+
+With sublinear TF scaling:
+
+\[
+TF=1+\log(f)
+\]
+
+where \(f\) is the raw term frequency.
+
+Why?
+
+Suppose:
+
+```text
+word appears 1 time → 1
+word appears 10 times → 10
+word appears 100 times → 100
+```
+
+Raw counts can become very large.
+
+Sublinear scaling compresses this:
+
+```text
+1 → 1
+10 → 1 + log(10)
+100 → 1 + log(100)
+```
+
+This can sometimes work better for text classification.
+
+---
+
+# 37. Exam-Oriented Summary
+
+### Definition
+
+**TF-IDF (Term Frequency-Inverse Document Frequency)** is a statistical text-vectorization technique that assigns a numerical weight to a term based on its frequency within a document and its rarity across the document collection.
+
+### Formula
+
+\[
+\boxed{TFIDF(t,d)=TF(t,d)\times IDF(t)}
+\]
+
+where:
+
+\[
+TF(t,d)=
+\frac{\text{frequency of term }t}
+{\text{total terms in document }d}
+\]
+
+and:
+
+\[
+IDF(t)=
+\log\left(\frac{N}{DF(t)}\right)
+\]
+
+### Interpretation
+
+```text
+High TF
++
+Low DF
+      ↓
+High TF-IDF
+      ↓
+Important/discriminative term
+```
+
+```text
+High DF
+      ↓
+Low IDF
+      ↓
+Low TF-IDF
+```
+
+---
+
+# 38. BoW → TF-IDF → Embeddings
+
+You should understand the evolution like this:
+
+```text
+                 TEXT REPRESENTATION
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+          ▼              ▼              ▼
+         BoW           TF-IDF        Embeddings
+          │              │              │
+          │              │              ├── Word2Vec
+          │              │              ├── GloVe
+          │              │              └── FastText
+          │              │
+          │              │
+          ▼              ▼
+      Frequency      Importance
+       of words      of words
+```
+
+Then modern NLP moves further:
+
+```text
+TF-IDF
+  ↓
+Word Embeddings
+  ↓
+Contextual Embeddings
+  ↓
+Transformers
+  ↓
+BERT / GPT / etc.
+```
+
+The key thing to remember is:
+
+> **BoW counts words. TF-IDF weights words according to their usefulness in distinguishing documents. Word embeddings represent semantic relationships. Transformer-based representations additionally model context.**
