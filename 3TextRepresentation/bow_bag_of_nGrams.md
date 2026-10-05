@@ -930,3 +930,765 @@ Unigrams + Bigrams + Trigrams
 ```
 
 ---
+
+# 21. CountVectorizer with N-grams
+
+Let's look at a practical example:
+
+```python
+from sklearn.feature_extraction.text import CountVectorizer
+
+text = [
+    "this movie is very good",
+    "this movie is not good",
+    "this movie is very bad"
+]
+
+vectorizer = CountVectorizer(
+    ngram_range=(1, 2)
+)
+
+X = vectorizer.fit_transform(text)
+
+print(vectorizer.get_feature_names_out())
+```
+
+Features will include things such as:
+
+```text
+this
+movie
+is
+very
+good
+not
+bad
+
+this movie
+movie is
+is very
+very good
+is not
+not good
+very bad
+```
+
+This gives the model more contextual information.
+
+---
+
+# 22. BoW vs Bag of N-grams
+
+| Feature | Bag of Words | Bag of N-grams |
+|---|---|---|
+| Basic unit | Words | Word sequences |
+| N | Usually 1 | 1, 2, 3, ... |
+| Word order | Mostly ignored | Partially captured |
+| Context | Low | Better |
+| Features | Fewer | More |
+| Dimensionality | Lower | Higher |
+| Sparsity | High | Usually higher |
+| Computational cost | Lower | Higher |
+| Captures phrases | No | Yes |
+| Example | `good` | `very good` |
+
+---
+
+# 23. Important Difference
+
+Consider:
+
+```text
+"I do not like this movie"
+```
+
+### Bag of Words
+
+Features:
+
+```text
+I
+do
+not
+like
+this
+movie
+```
+
+It does not directly represent:
+
+```text
+do not like
+```
+
+### Bag of Bigrams
+
+Features:
+
+```text
+I do
+do not
+not like
+like this
+this movie
+```
+
+Now the model gets information about local word relationships.
+
+---
+
+# 24. BoW vs Bigram: Important Example
+
+Consider:
+
+```text
+"The food is good"
+"The food is not good"
+```
+
+With unigrams:
+
+```text
+good
+not
+```
+
+With bigrams:
+
+```text
+is good
+is not
+not good
+```
+
+The bigram:
+
+```text
+not good
+```
+
+can be highly useful for sentiment classification.
+
+Therefore:
+
+```text
+Unigram → individual word information
+Bigram  → two-word contextual information
+Trigram → three-word contextual information
+```
+
+---
+
+# 25. Advantages of Bag of Words
+
+### 1. Simple
+
+Very easy to understand and implement.
+
+### 2. Fast
+
+Compared with many modern NLP representations, BoW is computationally inexpensive.
+
+### 3. Interpretable
+
+You can directly see which words correspond to which features.
+
+### 4. Works well for many classical ML tasks
+
+For example:
+
+- Spam detection
+- Sentiment analysis
+- Document classification
+- Topic classification
+- News classification
+
+### 5. Works with traditional ML algorithms
+
+For example:
+
+```text
+BoW
+ ↓
+Logistic Regression
+ ↓
+Classification
+```
+
+or:
+
+```text
+BoW
+ ↓
+Naive Bayes
+ ↓
+Spam Detection
+```
+
+---
+
+# 26. Disadvantages of Bag of Words
+
+### 1. Ignores word order
+
+```text
+Dog bites man
+```
+
+and
+
+```text
+Man bites dog
+```
+
+can have the same representation.
+
+### 2. Doesn't understand semantics
+
+These words are treated as independent features:
+
+```text
+car
+automobile
+vehicle
+```
+
+BoW doesn't inherently know that they are semantically related.
+
+### 3. High dimensionality
+
+Large vocabulary means large vectors.
+
+### 4. Sparse representation
+
+Most elements are zero.
+
+### 5. Unknown words
+
+Words not present in the training vocabulary may be ignored or mapped to no feature.
+
+---
+
+# 27. Advantages of Bag of N-grams
+
+### 1. Captures local word order
+
+For example:
+
+```text
+not good
+```
+
+### 2. Captures phrases
+
+Examples:
+
+```text
+machine learning
+deep learning
+natural language
+New York
+```
+
+### 3. Often improves classification
+
+Especially in:
+
+- Sentiment analysis
+- Spam detection
+- Text classification
+- Intent classification
+
+### 4. Still relatively simple
+
+You can implement it using:
+
+```python
+CountVectorizer
+```
+
+---
+
+# 28. Disadvantages of N-grams
+
+### 1. Very large vocabulary
+
+Suppose you have:
+
+```text
+100,000 words
+```
+
+The number of possible bigrams can become extremely large.
+
+Theoretical possibilities are roughly:
+
+```text
+100,000²
+```
+
+although only a fraction actually occurs.
+
+### 2. More sparse
+
+More features generally means more zeros.
+
+### 3. More memory
+
+The feature matrix becomes larger.
+
+### 4. More computationally expensive
+
+Training and vectorization can become slower.
+
+### 5. Limited context
+
+A trigram only captures three consecutive words.
+
+For example:
+
+```text
+The movie that I watched yesterday was excellent
+```
+
+A small n-gram cannot fully understand the relationship between:
+
+```text
+movie
+```
+
+and:
+
+```text
+excellent
+```
+
+when they are far apart.
+
+---
+
+# 29. N-gram Size Trade-off
+
+Increasing N gives more context but also increases complexity.
+
+```text
+Unigram
+   ↓
+less context
+   ↓
+fewer features
+   ↓
+faster
+```
+
+while:
+
+```text
+Bigram
+   ↓
+more context
+   ↓
+more features
+```
+
+and:
+
+```text
+Trigram
+   ↓
+even more context
+   ↓
+even more features
+```
+
+Eventually:
+
+```text
+large N
+   ↓
+huge vocabulary
+   ↓
+sparse matrix
+   ↓
+high computational cost
+```
+
+Therefore, we don't simply choose the largest possible N.
+
+---
+
+# 30. Word N-grams vs Character N-grams
+
+N-grams can be created from **words** or **characters**.
+
+## Word N-gram
+
+Sentence:
+
+```text
+I love NLP
+```
+
+Bigrams:
+
+```text
+I love
+love NLP
+```
+
+---
+
+## Character N-gram
+
+For:
+
+```text
+hello
+```
+
+Character bigrams might be:
+
+```text
+he
+el
+ll
+lo
+```
+
+Character trigrams:
+
+```text
+hel
+ell
+llo
+```
+
+Character n-grams are useful for:
+
+- Spelling variations
+- Morphology
+- Short text
+- Noisy text
+- Social-media text
+- Languages with complex word formation
+
+In scikit-learn:
+
+```python
+CountVectorizer(
+    analyzer="char",
+    ngram_range=(2, 3)
+)
+```
+
+---
+
+# 31. Word N-gram vs Character N-gram
+
+| Feature | Word N-gram | Character N-gram |
+|---|---|---|
+| Unit | Words | Characters |
+| Example | `not good` | `no`, `ot`, `t ` |
+| Captures | Word context | Subword patterns |
+| Vocabulary | Word-based | Character-based |
+| Handles spelling variation | Poorer | Better |
+| Interpretability | Higher | Lower |
+| Common use | Text classification | Noisy/morphological text |
+
+---
+
+# 32. BoW, N-grams and TF-IDF
+
+These concepts are related but shouldn't be confused.
+
+### Bag of Words
+
+Defines the **features**:
+
+```text
+words
+```
+
+### N-grams
+
+Defines the **features** as sequences:
+
+```text
+word
+word word
+word word word
+```
+
+### TF-IDF
+
+Defines **how important each feature is**.
+
+For example:
+
+```text
+Feature          Weight
+-----------------------
+machine          0.31
+learning         0.25
+machine learning 0.67
+```
+
+So you can have:
+
+```text
+TF-IDF + unigrams
+```
+
+or:
+
+```text
+TF-IDF + unigrams + bigrams
+```
+
+using:
+
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+vectorizer = TfidfVectorizer(
+    ngram_range=(1, 2)
+)
+```
+
+---
+
+# 33. Complete Text Representation Pipeline
+
+For classical NLP, a common pipeline is:
+
+```text
+Raw Text
+   ↓
+Lowercase
+   ↓
+Remove unnecessary characters
+   ↓
+Tokenization
+   ↓
+Stopword handling
+   ↓
+Stemming / Lemmatization
+   ↓
+N-gram generation
+   ↓
+Vectorization
+   ↓
+Machine Learning Model
+```
+
+For example:
+
+```text
+"I really love this amazing movie!"
+```
+
+After preprocessing:
+
+```text
+"really love amazing movie"
+```
+
+Generate unigrams:
+
+```text
+really
+love
+amazing
+movie
+```
+
+Generate bigrams:
+
+```text
+really love
+love amazing
+amazing movie
+```
+
+Then vectorize:
+
+```text
+[1, 1, 1, 1, 1, 1, 1]
+```
+
+The actual values depend on whether you're using counts, binary values, TF-IDF, etc.
+
+---
+
+# 34. When Should You Use What?
+
+A useful rule of thumb:
+
+### Use Unigram/BoW when:
+
+- Dataset is large
+- You need simplicity
+- Interpretability is important
+- Word order isn't extremely important
+- You want a strong classical baseline
+
+### Use Unigram + Bigram when:
+
+- Context matters
+- Sentiment analysis
+- Text classification
+- Phrase detection
+- Intent classification
+
+### Use Trigrams when:
+
+- Specific phrases matter
+- You have enough training data
+- Computational resources are sufficient
+
+Don't automatically use:
+
+```python
+ngram_range=(1, 5)
+```
+
+because this can dramatically increase the feature space.
+
+---
+
+# 35. A Practical NLP Example
+
+Suppose we're building a movie-review classifier.
+
+Training data:
+
+```text
+"This movie is excellent"
+"This movie is amazing"
+"This movie is not good"
+"This movie is very boring"
+```
+
+### Unigram features
+
+```text
+movie
+excellent
+amazing
+not
+good
+very
+boring
+```
+
+The model can learn:
+
+```text
+excellent → positive
+amazing   → positive
+boring    → negative
+```
+
+But the phrase:
+
+```text
+not good
+```
+
+is important.
+
+Using bigrams:
+
+```text
+this movie
+movie is
+is excellent
+is amazing
+is not
+not good
+very boring
+```
+
+Now:
+
+```text
+not good → negative
+very boring → negative
+```
+
+can be learned directly.
+
+---
+
+# 36. Important Exam Definition
+
+If asked:
+
+### "What is Bag of Words?"
+
+You can write:
+
+> **Bag of Words (BoW)** is a text representation technique in NLP that converts a collection of documents into numerical vectors based on the occurrence or frequency of words in a predefined vocabulary. It ignores grammatical structure and word order and represents each document using a vector of word counts or binary indicators.
+
+---
+
+### "What is Bag of N-grams?"
+
+> **Bag of N-grams** is an extension of the Bag-of-Words model in which text is represented using sequences of N consecutive tokens rather than only individual words. Unigrams represent single words, bigrams represent pairs of consecutive words, and trigrams represent three consecutive words. N-grams capture limited local word-order and contextual information but generally increase the dimensionality and sparsity of the feature space.
+
+---
+
+# 37. The Big Picture
+
+You can remember the progression like this:
+
+```text
+                 TEXT
+                   │
+                   ▼
+          ┌─────────────────┐
+          │   Tokenization  │
+          └────────┬────────┘
+                   │
+                   ▼
+        ┌─────────────────────┐
+        │ Text Representation │
+        └──────────┬──────────┘
+                   │
+       ┌───────────┼────────────┐
+       │           │            │
+       ▼           ▼            ▼
+     BoW        N-grams       TF-IDF
+       │           │
+       │     ┌─────┼─────┐
+       │     │     │     │
+       │  Unigram Bigram Trigram
+       │
+       └───────────┬────────────
+                   ▼
+             Numerical Matrix
+                   │
+                   ▼
+          Machine Learning Model
+```
+
+The key idea is:
+
+> **BoW asks: "Which words are present and how frequently?"**
+
+> **N-grams ask: "Which consecutive word combinations are present and how frequently?"**
+
+And the most important limitation to remember is:
+
+```text
+BoW
+→ loses word order
+
+N-grams
+→ captures only LOCAL word order
+
+Modern embeddings / Transformers
+→ capture much richer semantic and contextual relationships
+```
+
+So **Bag of Words → N-grams → TF-IDF → Word Embeddings → Contextual Embeddings/Transformers** is a useful progression to understand the evolution of NLP text representation.
