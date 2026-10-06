@@ -576,3 +576,518 @@ This is a beautiful insight:
 > **The Word2Vec embedding is essentially learned from the neural network's weight matrix.**
 
 ---
+
+# 13. Word2Vec training mathematically
+
+For Skip-Gram, suppose we have:
+
+```text
+center word = w
+context word = c
+```
+
+We want:
+
+\[
+P(c|w)
+\]
+
+to be high.
+
+The basic objective is:
+
+\[
+\max \sum_{t=1}^{T}
+\sum_{-c \leq j \leq c,j\neq0}
+\log P(w_{t+j}|w_t)
+\]
+
+where:
+
+- \(T\) = number of words
+- \(c\) = context window
+- \(w_t\) = current word
+- \(w_{t+j}\) = surrounding word
+
+In simple terms:
+
+> Make the probability of actual context words high.
+
+---
+
+# 14. Softmax
+
+The traditional Word2Vec model can use Softmax to calculate:
+
+\[
+P(context|word)
+\]
+
+For vocabulary \(V\):
+
+\[
+P(w_O|w_I)
+=
+\frac{e^{v_{w_O}^{T}v_{w_I}}}
+{\sum_{w=1}^{V}e^{v_w^Tv_{w_I}}}
+\]
+
+Where:
+
+- \(w_I\) = input word
+- \(w_O\) = output/context word
+- \(v_{w_I}\) = input embedding
+- \(v_{w_O}\) = output embedding
+- \(V\) = vocabulary size
+
+The problem is that if:
+
+```text
+Vocabulary = 1,000,000 words
+```
+
+we would need to calculate probabilities for a million words for every training example.
+
+That's expensive.
+
+Word2Vec therefore introduced important optimization techniques.
+
+---
+
+# 15. Negative Sampling
+
+**Negative Sampling** is one of the most important Word2Vec concepts.
+
+Instead of predicting the probability of every word in the vocabulary, we train the model to distinguish:
+
+```text
+real context
+```
+
+from:
+
+```text
+random/negative context
+```
+
+Suppose:
+
+```text
+"The cat drinks milk"
+```
+
+Positive example:
+
+```text
+cat → milk
+```
+
+Negative examples could be:
+
+```text
+cat → computer
+cat → airplane
+cat → mountain
+cat → database
+```
+
+The model learns:
+
+```text
+cat + milk       → 1
+cat + computer   → 0
+cat + airplane   → 0
+cat + mountain   → 0
+```
+
+So instead of calculating a huge Softmax over the entire vocabulary, it only needs to evaluate a small number of positive and negative examples.
+
+---
+
+# 16. Why negative sampling works
+
+The model is effectively learning:
+
+> "Which words are likely to appear together?"
+
+For example:
+
+```text
+        cat
+       /   \
+      /     \
+   milk     pet
+     ✓       ✓
+```
+
+while:
+
+```text
+cat → database
+cat → airplane
+```
+
+are unlikely in the same context.
+
+Repeated training causes meaningful relationships to emerge.
+
+---
+
+# 17. Word2Vec and semantic relationships
+
+One of the famous observations about Word2Vec is that vector arithmetic can capture relationships.
+
+For example:
+
+\[
+king - man + woman \approx queen
+\]
+
+Conceptually:
+
+```text
+king
+ -
+man
+ +
+woman
+ =
+queen
+```
+
+This happens because the learned vector space captures certain linguistic relationships.
+
+Another example might be:
+
+```text
+Paris - France + Italy ≈ Rome
+```
+
+The exact quality depends heavily on the training corpus and model.
+
+---
+
+# 18. Similarity between words
+
+Once you have word embeddings, you can calculate similarity.
+
+The most common metric is **cosine similarity**.
+
+\[
+\cos(\theta)
+=
+\frac{A\cdot B}
+{\|A\|\|B\|}
+\]
+
+For example:
+
+```text
+vector("dog")
+vector("cat")
+```
+
+might have:
+
+```text
+Cosine similarity = 0.82
+```
+
+while:
+
+```text
+vector("dog")
+vector("database")
+```
+
+might have:
+
+```text
+Cosine similarity = 0.10
+```
+
+So:
+
+```text
+higher cosine similarity
+        ↓
+more similar direction
+        ↓
+often more semantically/contextually related
+```
+
+---
+
+# 19. Training Word2Vec with Gensim
+
+The easiest way to experiment with Word2Vec in Python is usually **Gensim**.
+
+Install:
+
+```bash
+pip install gensim
+```
+
+Then:
+
+```python
+from gensim.models import Word2Vec
+```
+
+Suppose your data is:
+
+```python
+sentences = [
+    ["i", "love", "machine", "learning"],
+    ["i", "love", "deep", "learning"],
+    ["machine", "learning", "is", "interesting"],
+    ["deep", "learning", "is", "powerful"]
+]
+```
+
+Train:
+
+```python
+model = Word2Vec(
+    sentences,
+    vector_size=100,
+    window=5,
+    min_count=1,
+    workers=4
+)
+```
+
+---
+
+# 20. Important parameters
+
+### `vector_size`
+
+```python
+vector_size=100
+```
+
+Determines the number of dimensions of each word vector.
+
+For example:
+
+```text
+vector_size = 100
+
+"machine" →
+[0.12, -0.43, 0.51, ..., 0.27]
+```
+
+Common values:
+
+```text
+50
+100
+200
+300
+```
+
+Larger dimensions can capture more information but require more computation and data.
+
+---
+
+### `window`
+
+```python
+window=5
+```
+
+Determines how many words around the target word are considered as context.
+
+For:
+
+```text
+I love machine learning with Python
+```
+
+a larger window captures broader context.
+
+Small window:
+
+```text
+local/syntactic relationships
+```
+
+Larger window:
+
+```text
+broader semantic relationships
+```
+
+---
+
+### `min_count`
+
+```python
+min_count=2
+```
+
+Ignores words that appear fewer than 2 times.
+
+For a large corpus, this is useful because extremely rare words may not provide enough information.
+
+For a tiny demonstration dataset:
+
+```python
+min_count=1
+```
+
+is appropriate.
+
+---
+
+### `workers`
+
+```python
+workers=4
+```
+
+Number of CPU threads used for training.
+
+---
+
+### `sg`
+
+This determines CBOW vs Skip-Gram.
+
+```python
+sg=0
+```
+
+means:
+
+```text
+CBOW
+```
+
+while:
+
+```python
+sg=1
+```
+
+means:
+
+```text
+Skip-Gram
+```
+
+For example:
+
+```python
+model = Word2Vec(
+    sentences,
+    vector_size=100,
+    window=5,
+    min_count=2,
+    sg=1
+)
+```
+
+uses Skip-Gram.
+
+---
+
+# 21. Getting the vector of a word
+
+After training:
+
+```python
+vector = model.wv["machine"]
+```
+
+Then:
+
+```python
+print(vector)
+```
+
+You might see:
+
+```text
+[ 0.012, -0.431, 0.217, ...]
+```
+
+Check its dimensions:
+
+```python
+print(vector.shape)
+```
+
+Output:
+
+```text
+(100,)
+```
+
+because:
+
+```python
+vector_size=100
+```
+
+---
+
+# 22. Finding similar words
+
+This is one of the coolest things you can do.
+
+```python
+model.wv.most_similar("machine")
+```
+
+You might get:
+
+```text
+[
+    ("learning", 0.82),
+    ("computer", 0.74),
+    ("deep", 0.71),
+    ...
+]
+```
+
+The second value is similarity.
+
+---
+
+# 23. Word similarity
+
+You can directly calculate:
+
+```python
+model.wv.similarity(
+    "machine",
+    "learning"
+)
+```
+
+Example:
+
+```text
+0.82
+```
+
+And:
+
+```python
+model.wv.similarity(
+    "machine",
+    "banana"
+)
+```
+
+might be:
+
+```text
+0.05
+```
+
+Again, the actual results depend on the corpus.
+
+---
