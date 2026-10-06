@@ -2,3 +2,34 @@
 *.csv
 *.jpg
 *.png
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+
+# ML models / large files
+models/
+*.bin
+*.bin.gz
+*.pkl
+*.joblib
+
+# Data
+data/
+*.csv
+*.zip
+
+# OS
+.DS_Store
+Thumbs.db

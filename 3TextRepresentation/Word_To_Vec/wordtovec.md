@@ -1091,3 +1091,474 @@ might be:
 Again, the actual results depend on the corpus.
 
 ---
+
+# 24. Word2Vec on your review dataset
+
+Since you're currently working with **review data**, suppose:
+
+```python
+df["review"]
+```
+
+contains:
+
+```text
+"I loved this movie"
+"This movie was terrible"
+"Great acting and story"
+...
+```
+
+First tokenize the reviews.
+
+For example:
+
+```python
+sentences = df["review"].apply(
+    lambda x: x.lower().split()
+).tolist()
+```
+
+Now:
+
+```python
+sentences
+```
+
+looks like:
+
+```python
+[
+    ["i", "loved", "this", "movie"],
+    ["this", "movie", "was", "terrible"],
+    ["great", "acting", "and", "story"]
+]
+```
+
+Then:
+
+```python
+from gensim.models import Word2Vec
+
+word2vec_model = Word2Vec(
+    sentences,
+    vector_size=100,
+    window=5,
+    min_count=2,
+    workers=4,
+    sg=1
+)
+```
+
+Now you have learned embeddings from your reviews.
+
+---
+
+# 25. But Word2Vec doesn't directly give one vector for a whole review
+
+This is a very important distinction.
+
+Word2Vec gives:
+
+```text
+word → vector
+```
+
+not:
+
+```text
+review → vector
+```
+
+For example:
+
+```text
+"I love this movie"
+```
+
+becomes:
+
+```text
+I       → vector
+love    → vector
+this    → vector
+movie   → vector
+```
+
+So you have multiple vectors.
+
+You need another method to combine them into one review vector.
+
+---
+
+# 26. Simple way: Average Word2Vec vectors
+
+Suppose:
+
+```text
+I      → [0.1, 0.2, 0.3]
+love   → [0.7, 0.8, 0.2]
+movie  → [0.4, 0.1, 0.6]
+```
+
+You can calculate:
+
+\[
+review\ vector =
+\frac{v_1+v_2+v_3}{3}
+\]
+
+giving:
+
+```text
+[0.4, 0.37, 0.37]
+```
+
+In Python:
+
+```python
+import numpy as np
+
+def document_vector(doc):
+    vectors = []
+
+    for word in doc:
+        if word in word2vec_model.wv:
+            vectors.append(word2vec_model.wv[word])
+
+    if len(vectors) == 0:
+        return np.zeros(word2vec_model.vector_size)
+
+    return np.mean(vectors, axis=0)
+```
+
+Then:
+
+```python
+review_vector = document_vector(
+    ["i", "love", "this", "movie"]
+)
+
+print(review_vector)
+```
+
+Now:
+
+```text
+review
+   ↓
+words
+   ↓
+Word2Vec
+   ↓
+word vectors
+   ↓
+average
+   ↓
+one review vector
+```
+
+---
+
+# 27. Using Word2Vec vectors for ML
+
+Now you can create:
+
+```python
+X = np.array([
+    document_vector(review)
+    for review in sentences
+])
+```
+
+Suppose you have:
+
+```text
+10,000 reviews
+```
+
+and:
+
+```python
+vector_size=100
+```
+
+Then:
+
+```python
+X.shape
+```
+
+will be approximately:
+
+```text
+(10000, 100)
+```
+
+Now this becomes your ML feature matrix.
+
+You can do:
+
+```python
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    df["sentiment"],
+    test_size=0.2,
+    random_state=42,
+    stratify=df["sentiment"]
+)
+```
+
+Then:
+
+```python
+from sklearn.linear_model import LogisticRegression
+
+model = LogisticRegression()
+
+model.fit(X_train, y_train)
+```
+
+Now Word2Vec has become a **feature extraction method** for your sentiment classifier.
+
+---
+
+# 28. Word2Vec vs TF-IDF
+
+This is particularly relevant to what you were learning earlier.
+
+| Feature | TF-IDF | Word2Vec |
+|---|---|---|
+| Representation | Sparse | Dense |
+| Vector for | Documents/words | Words |
+| Semantic relationships | Limited | Much better |
+| Vector dimensions | Vocabulary size | User-defined |
+| Context understanding | No | Context-based |
+| Word similarity | Limited | Strong |
+| Unknown words | Problem | Problem |
+| Training required | No | Yes |
+| Typical use | Classical ML | Embeddings/Deep Learning |
+
+For example:
+
+### TF-IDF
+
+```text
+review
+ ↓
+[0, 0.32, 0, 0.82, 0, ...]
+ ↓
+Logistic Regression
+```
+
+### Word2Vec
+
+```text
+review
+ ↓
+words
+ ↓
+word embeddings
+ ↓
+combine embeddings
+ ↓
+[0.21, -0.43, 0.67, ...]
+ ↓
+Logistic Regression / Neural Network
+```
+
+---
+
+# 29. Word2Vec's biggest limitation
+
+Word2Vec creates **one fixed vector for each word**.
+
+This means the word:
+
+```text
+bank
+```
+
+has one vector.
+
+But consider:
+
+```text
+I deposited money in the bank.
+```
+
+and:
+
+```text
+We sat beside the river bank.
+```
+
+The meaning of `bank` is different.
+
+Traditional Word2Vec doesn't dynamically change the vector based on the sentence.
+
+It essentially learns:
+
+```text
+bank → one vector
+```
+
+This is called a **static embedding**.
+
+Modern models such as:
+
+```text
+ELMo
+BERT
+RoBERTa
+GPT-style models
+```
+
+produce **contextual representations**, where the representation of a word can change according to its surrounding words.
+
+---
+
+# 30. Word2Vec → GloVe → FastText → BERT
+
+A useful progression for your NLP learning is:
+
+```text
+One-Hot Encoding
+       ↓
+Bag of Words
+       ↓
+TF-IDF
+       ↓
+Word2Vec
+       ↓
+GloVe
+       ↓
+FastText
+       ↓
+ELMo
+       ↓
+BERT
+       ↓
+Transformers
+       ↓
+Modern LLMs
+```
+
+Conceptually, you're moving from:
+
+```text
+"Does this word exist?"
+```
+
+toward:
+
+```text
+"What does this word mean based on its context?"
+```
+
+---
+
+# 31. The most important things to remember
+
+If you're preparing this as an NLP topic, remember these **7 points**:
+
+### 1. Word2Vec is a word embedding technique
+
+It converts:
+
+```text
+word → dense numerical vector
+```
+
+### 2. It learns from context
+
+```text
+Similar contexts
+       ↓
+Similar vectors
+```
+
+### 3. It has two architectures
+
+```text
+CBOW:
+Context → Target
+
+
+Skip-Gram:
+Target → Context
+```
+
+### 4. Word vectors are learned
+
+They are not manually assigned.
+
+### 5. Negative Sampling makes training efficient
+
+Instead of calculating probabilities for the entire vocabulary, it trains using a small number of positive and negative examples.
+
+### 6. Word2Vec captures semantic relationships
+
+For example:
+
+```text
+king - man + woman ≈ queen
+```
+
+### 7. Word2Vec gives word vectors, not automatically sentence vectors
+
+For reviews:
+
+```text
+Review
+ ↓
+Tokenize
+ ↓
+Word2Vec
+ ↓
+Individual word vectors
+ ↓
+Average/weighted combination
+ ↓
+Review vector
+ ↓
+ML model
+```
+
+---
+
+## The key difference from what you just learned
+
+You previously had:
+
+```text
+Review
+   ↓
+TF-IDF
+   ↓
+X_train
+   ↓
+Logistic Regression
+```
+
+With Word2Vec:
+
+```text
+Review
+   ↓
+Tokenization
+   ↓
+Word2Vec
+   ↓
+Word vectors
+   ↓
+Combine word vectors
+   ↓
+X_train
+   ↓
+Logistic Regression / Neural Network
+```
+
+**That distinction—Word2Vec produces vectors for individual words, while your classifier needs a representation for the entire review—is the most important concept to understand before moving to FastText or BERT.**
