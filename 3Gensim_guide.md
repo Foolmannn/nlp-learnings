@@ -997,3 +997,840 @@ Skip-gram
 ```
 
 ---
+
+# 23. Access the vocabulary
+
+In modern Gensim, you'll primarily use:
+
+```python
+model.wv
+```
+
+`wv` stands for the **word vectors**.
+
+Check vocabulary size:
+
+```python
+print(len(model.wv))
+```
+
+Check vocabulary:
+
+```python
+print(model.wv.key_to_index)
+```
+
+For example:
+
+```python
+{
+    'learning': 0,
+    'machine': 1,
+    'data': 2,
+    ...
+}
+```
+
+---
+
+# 24. Check whether a word exists
+
+```python
+if 'machine' in model.wv:
+    print("Word exists")
+```
+
+Or:
+
+```python
+print('machine' in model.wv)
+```
+
+---
+
+# 25. Get a word vector
+
+```python
+vector = model.wv['machine']
+
+print(vector)
+```
+
+Check dimensions:
+
+```python
+print(vector.shape)
+```
+
+If:
+
+```python
+vector_size=100
+```
+
+you get:
+
+```text
+(100,)
+```
+
+---
+
+# 26. Find similar words
+
+This is one of the coolest Word2Vec operations.
+
+```python
+model.wv.most_similar('machine')
+```
+
+You might get:
+
+```python
+[
+    ('learning', 0.82),
+    ('computer', 0.75),
+    ('data', 0.71),
+    ...
+]
+```
+
+The second value is the similarity score.
+
+---
+
+# 27. Similarity between two words
+
+```python
+model.wv.similarity(
+    'machine',
+    'learning'
+)
+```
+
+Example:
+
+```text
+0.72
+```
+
+The closer to `1`, generally the more similar the vectors are in cosine similarity terms.
+
+---
+
+# 28. Word analogy
+
+Word2Vec can perform vector arithmetic.
+
+For example:
+
+```text
+king - man + woman ≈ queen
+```
+
+Gensim:
+
+```python
+model.wv.most_similar(
+    positive=['king', 'woman'],
+    negative=['man']
+)
+```
+
+Conceptually:
+
+```text
+king
+ - man
+ + woman
+ ↓
+queen
+```
+
+This is one of the famous demonstrations of Word2Vec.
+
+---
+
+# 29. Save the model
+
+Don't retrain every time.
+
+```python
+model.save("word2vec.model")
+```
+
+Then load it:
+
+```python
+from gensim.models import Word2Vec
+
+model = Word2Vec.load("word2vec.model")
+```
+
+This is especially important when training takes minutes or hours.
+
+---
+
+# 30. Save only word vectors
+
+Sometimes you don't need the complete training model.
+
+You can save:
+
+```python
+model.wv.save("word_vectors.kv")
+```
+
+Load:
+
+```python
+from gensim.models import KeyedVectors
+
+vectors = KeyedVectors.load("word_vectors.kv")
+```
+
+Then:
+
+```python
+vectors['machine']
+```
+
+and:
+
+```python
+vectors.most_similar('machine')
+```
+
+---
+
+# 31. `KeyedVectors`
+
+You will encounter this class frequently when working with pretrained embeddings.
+
+```python
+from gensim.models import KeyedVectors
+```
+
+It represents a collection of vectors indexed by words.
+
+For example:
+
+```python
+vectors['king']
+```
+
+returns the vector for `king`.
+
+And:
+
+```python
+vectors.most_similar('king')
+```
+
+finds similar words.
+
+---
+
+# 32. Pretrained Word2Vec
+
+This is directly related to the question you asked earlier about:
+
+```text
+GoogleNews-vectors-negative300.bin.gz
+```
+
+A pretrained model already contains learned word vectors.
+
+Instead of:
+
+```text
+your corpus
+ ↓
+train Word2Vec
+ ↓
+vectors
+```
+
+you can use:
+
+```text
+pretrained model
+ ↓
+load vectors
+ ↓
+use vectors
+```
+
+For example, if you have a compatible `.bin` model:
+
+```python
+from gensim.models import KeyedVectors
+
+model = KeyedVectors.load_word2vec_format(
+    "GoogleNews-vectors-negative300.bin",
+    binary=True
+)
+```
+
+Then:
+
+```python
+model['king']
+```
+
+gives the pretrained vector.
+
+And:
+
+```python
+model.most_similar('king')
+```
+
+works directly.
+
+---
+
+# 33. Why Google News vectors are `300` dimensions
+
+The famous Google News Word2Vec model uses:
+
+```text
+300-dimensional vectors
+```
+
+So:
+
+```python
+model['king'].shape
+```
+
+would be:
+
+```text
+(300,)
+```
+
+---
+
+# 34. FastText
+
+After Word2Vec, learn FastText.
+
+Import:
+
+```python
+from gensim.models import FastText
+```
+
+FastText is related to Word2Vec but represents words using **subword information**.
+
+This is particularly useful for:
+
+- rare words
+- morphological variations
+- words not explicitly seen during training
+- languages with rich morphology
+
+Example:
+
+```python
+model = FastText(
+    sentences=story,
+    vector_size=100,
+    window=5,
+    min_count=1,
+    workers=4
+)
+```
+
+Then:
+
+```python
+model.wv['machine']
+```
+
+works similarly to Word2Vec.
+
+---
+
+# 35. Word2Vec vs FastText
+
+### Word2Vec
+
+```text
+word
+ ↓
+word vector
+```
+
+### FastText
+
+```text
+word
+ ↓
+subword information
+ ↓
+word vector
+```
+
+For example:
+
+```text
+playing
+```
+
+can benefit from pieces such as:
+
+```text
+play
+lay
+ing
+...
+```
+
+This gives FastText advantages for certain rare/OOV situations.
+
+---
+
+# 36. Doc2Vec
+
+Word2Vec represents:
+
+```text
+words
+```
+
+Doc2Vec represents:
+
+```text
+documents
+```
+
+Import:
+
+```python
+from gensim.models import Doc2Vec
+```
+
+Conceptually:
+
+```text
+Word2Vec:
+
+word → vector
+
+
+Doc2Vec:
+
+document → vector
+```
+
+For example:
+
+```text
+Document 1 → [0.23, -0.45, ...]
+Document 2 → [0.81,  0.12, ...]
+```
+
+This can be useful for:
+
+- document similarity
+- document classification
+- recommendation
+- document retrieval
+
+---
+
+# 37. TF-IDF in Gensim
+
+Gensim also provides TF-IDF.
+
+```python
+from gensim.models import TfidfModel
+```
+
+Typical workflow:
+
+```python
+from gensim.corpora import Dictionary
+from gensim.models import TfidfModel
+
+dictionary = Dictionary(documents)
+
+corpus = [
+    dictionary.doc2bow(doc)
+    for doc in documents
+]
+
+tfidf = TfidfModel(corpus)
+
+vector = tfidf[corpus[0]]
+```
+
+The important pipeline is:
+
+```text
+documents
+    ↓
+Dictionary
+    ↓
+doc2bow()
+    ↓
+BoW corpus
+    ↓
+TfidfModel
+    ↓
+TF-IDF vectors
+```
+
+---
+
+# 38. LDA — Topic Modeling
+
+Gensim is also famous for topic modelling.
+
+Import:
+
+```python
+from gensim.models import LdaModel
+```
+
+The idea is:
+
+```text
+documents
+     ↓
+LDA
+     ↓
+topics
+```
+
+Suppose you have:
+
+```text
+Document 1 → football, player, goal, match
+Document 2 → computer, python, neural, model
+Document 3 → football, goal, team, league
+```
+
+LDA might discover topics such as:
+
+```text
+Topic 1:
+football
+goal
+player
+team
+
+Topic 2:
+computer
+python
+model
+neural
+```
+
+You didn't explicitly label the topics.
+
+The algorithm discovers latent topics from word distributions.
+
+---
+
+# 39. Typical LDA workflow
+
+```python
+from gensim.corpora import Dictionary
+from gensim.models import LdaModel
+
+dictionary = Dictionary(documents)
+
+corpus = [
+    dictionary.doc2bow(doc)
+    for doc in documents
+]
+
+lda = LdaModel(
+    corpus=corpus,
+    id2word=dictionary,
+    num_topics=5
+)
+```
+
+Then:
+
+```python
+lda.print_topics()
+```
+
+---
+
+# 40. LSI
+
+Another topic/document representation available in Gensim is LSI.
+
+```python
+from gensim.models import LsiModel
+```
+
+Typical workflow:
+
+```python
+lsi = LsiModel(
+    corpus=corpus,
+    id2word=dictionary,
+    num_topics=5
+)
+```
+
+LSI is based on latent semantic analysis and uses dimensionality reduction ideas to represent documents/topics.
+
+---
+
+# 41. The important Gensim pattern
+
+You should recognize this pattern whenever you see Gensim code:
+
+```text
+Raw Documents
+      ↓
+Tokenization
+      ↓
+Dictionary
+      ↓
+Numerical Corpus
+      ↓
+Model
+      ↓
+Representation / Prediction
+```
+
+For example, LDA:
+
+```text
+documents
+   ↓
+tokens
+   ↓
+Dictionary
+   ↓
+doc2bow
+   ↓
+LdaModel
+   ↓
+topics
+```
+
+Word2Vec is slightly different:
+
+```text
+documents
+   ↓
+sentences
+   ↓
+tokens
+   ↓
+Word2Vec
+   ↓
+word embeddings
+```
+
+---
+
+# 42. Important Gensim classes to remember
+
+Don't try to memorize the entire library.
+
+Start with these:
+
+| Gensim component | Purpose |
+|---|---|
+| `simple_preprocess()` | Basic text preprocessing |
+| `Dictionary` | Maps words → IDs |
+| `doc2bow()` | Creates Bag-of-Words representation |
+| `Word2Vec` | Word embeddings |
+| `FastText` | Subword word embeddings |
+| `Doc2Vec` | Document embeddings |
+| `TfidfModel` | TF-IDF |
+| `LdaModel` | Topic modeling |
+| `LsiModel` | Latent semantic analysis |
+| `KeyedVectors` | Work with stored word vectors |
+
+---
+
+# 43. Your NLP learning roadmap
+
+Since you're currently studying **NLP text representation**, I'd recommend this exact progression:
+
+```text
+NLP
+│
+├── 1. Text preprocessing
+│      ├── lowercase
+│      ├── punctuation
+│      ├── stopwords
+│      ├── stemming
+│      └── lemmatization
+│
+├── 2. Tokenization
+│      ├── word tokenization
+│      └── sentence tokenization
+│
+├── 3. Text representation
+│      ├── One-Hot Encoding
+│      ├── Bag of Words
+│      ├── N-Grams
+│      ├── TF-IDF
+│      └── Word Embeddings
+│
+├── 4. Word Embeddings
+│      ├── Word2Vec
+│      │    ├── CBOW
+│      │    └── Skip-Gram
+│      │
+│      ├── FastText
+│      └── pretrained embeddings
+│
+├── 5. Document embeddings
+│      └── Doc2Vec
+│
+├── 6. Topic modeling
+│      ├── LDA
+│      └── LSI
+│
+└── 7. Modern NLP
+       ├── RNN
+       ├── LSTM
+       ├── GRU
+       ├── Attention
+       ├── Transformers
+       └── BERT
+```
+
+For **your current position**, don't jump into LDA yet.
+
+Focus on:
+
+```text
+simple_preprocess
+       ↓
+Dictionary
+       ↓
+Bag of Words
+       ↓
+Word2Vec
+       ↓
+CBOW
+       ↓
+Skip-Gram
+       ↓
+Word vectors
+       ↓
+Similarity
+       ↓
+Pretrained Word2Vec
+       ↓
+FastText
+```
+
+---
+
+# 44. The most important distinction for you
+
+You are likely to see code such as:
+
+```python
+from gensim.utils import simple_preprocess
+```
+
+and:
+
+```python
+from gensim.models import Word2Vec
+```
+
+These are **two completely different parts of Gensim**.
+
+### `gensim.utils`
+
+Utility functions:
+
+```python
+simple_preprocess()
+```
+
+### `gensim.models`
+
+Machine-learning/NLP models:
+
+```python
+Word2Vec
+FastText
+Doc2Vec
+LdaModel
+TfidfModel
+LsiModel
+```
+
+So don't think:
+
+> "Gensim = Word2Vec."
+
+Instead think:
+
+> **Gensim is an NLP library, and Word2Vec is one of the major models implemented in it.**
+
+---
+
+# 45. Official documentation
+
+For learning from the actual API documentation, the official Gensim documentation is the best reference. The project's design and documentation emphasize corpus processing, transformations and scalable NLP workflows. [PII Tools](https://radimrehurek.com/lrec2010_final.pdf?utm_source=chatgpt.com)
+
+[Gensim official documentation](https://radimrehurek.com/gensim/?utm_source=chatgpt.com)
+
+[Gensim API reference](https://radimrehurek.com/gensim/apiref.html?utm_source=chatgpt.com)
+
+For the specific classes you're about to use:
+
+[Word2Vec documentation](https://radimrehurek.com/gensim/models/word2vec.html?utm_source=chatgpt.com)
+
+[FastText documentation](https://radimrehurek.com/gensim/models/fasttext.html?utm_source=chatgpt.com)
+
+[Doc2Vec documentation](https://radimrehurek.com/gensim/models/doc2vec.html?utm_source=chatgpt.com)
+
+[Dictionary documentation](https://radimrehurek.com/gensim/corpora/dictionary.html?utm_source=chatgpt.com)
+
+---
+
+## What I recommend you do next
+
+Since your current code is specifically preparing `story` for **Word2Vec**, don't try to learn all of Gensim at once.
+
+The best next lesson is:
+
+```text
+Your story
+   ↓
+Word2Vec()
+   ↓
+vector_size
+window
+min_count
+workers
+sg
+epochs
+   ↓
+Vocabulary
+   ↓
+model.wv
+   ↓
+word vector
+   ↓
+most_similar()
+   ↓
+similarity()
+   ↓
+vector arithmetic
+   ↓
+save/load model
+   ↓
+pretrained Word2Vec
+```
