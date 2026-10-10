@@ -833,3 +833,482 @@ new_reviews = [    "The movie was wonderful and entertaining",    "The film was 
 ```
 
 The new reviews are transformed into the same feature space as the training data before classification.
+
+## Step 9: Predict probabilities
+
+Logistic Regression can also return probabilities.
+
+```
+probabilities = model.predict_proba(new_reviews_tfidf)for review, probs, prediction in zip(    new_reviews,    probabilities,    predictions):    print("Review:", review)    print("Prediction:", prediction)    for label, probability in zip(        model.classes_,        probs    ):        print(f"{label}: {probability:.4f}")    print()
+```
+
+For each review, `predict_proba()` returns a probability for each class. In this binary setup, the two probabilities sum to approximately 1.
+
+Do not interpret these numbers as guaranteed measures of correctness. A classifier can be overconfident or poorly calibrated, particularly when training data is limited or differs from the data encountered in production.
+
+# 9. The recommended implementation: use a Pipeline
+
+The previous implementation works, but scikit-learn provides a cleaner way to combine feature extraction and classification.
+
+A `Pipeline` ensures that the vectorizer is fitted as part of the training process and that the same transformation is applied during prediction.
+
+This is the implementation I recommend for your real NLP projects.
+
+```
+from sklearn.pipeline import Pipelinefrom sklearn.feature_extraction.text import TfidfVectorizerfrom sklearn.linear_model import LogisticRegressionfrom sklearn.model_selection import train_test_splitfrom sklearn.metrics import classification_reportX = df["review"]y = df["sentiment"]X_train, X_test, y_train, y_test = train_test_split(    X,    y,    test_size=0.25,    random_state=42,    stratify=y)text_classifier = Pipeline([    (        "tfidf",        TfidfVectorizer(            ngram_range=(1, 2),            sublinear_tf=True        )    ),    (        "classifier",        LogisticRegression(            max_iter=1000,            random_state=42        )    )])# Train both steps togethertext_classifier.fit(X_train, y_train)# Evaluate on unseen texty_pred = text_classifier.predict(X_test)print(classification_report(    y_test,    y_pred,    zero_division=0))# Predict directly from raw textnew_text = [    "The movie was brilliant and entertaining"]print(text_classifier.predict(new_text))
+```
+
+Notice the major difference:
+
+```
+# Without a PipelineX_new = tfidf.transform(new_text)prediction = model.predict(X_new)# With a Pipelineprediction = text_classifier.predict(new_text)
+```
+
+The Pipeline performs the transformation internally.
+
+### Why the Pipeline approach is better
+
+- It prevents accidental fitting of the vectorizer on test data when used correctly.
+- It keeps preprocessing and classification together.
+- It simplifies deployment.
+- It works naturally with cross-validation and hyperparameter tuning.
+- It reduces the chance of applying different transformations during training and prediction.
+
+A Pipeline does not automatically prevent every kind of leakage. For example, you must still avoid splitting duplicated reviews across train and test, and time-dependent data may require a chronological split rather than a random split.
+
+# 10. Evaluating a text classification model
+
+Training a classifier is only half the work. We also need to measure how well it classifies unseen examples.
+
+The most important evaluation metrics are accuracy, precision, recall, F1-score, and the confusion matrix.
+
+## 10.1 Confusion matrix
+
+For binary classification, the confusion matrix contains four outcomes.
+
+| Actual / Predicted | Predicted positive  | Predicted negative  |
+| ------------------ | ------------------- | ------------------- |
+| Actual positive    | True Positive (TP)  | False Negative (FN) |
+| Actual negative    | False Positive (FP) | True Negative (TN)  |
+
+Imagine that a spam classifier processes 100 emails:
+
+- 30 are actually spam.
+- 70 are legitimate.
+- The model correctly identifies 24 spam messages.
+- It incorrectly flags 5 legitimate messages as spam.
+- It misses 6 spam messages.
+- It correctly recognizes 65 legitimate messages.
+
+The confusion matrix is:
+
+| Actual / Predicted | Spam | Not spam |
+| ------------------ | ---- | -------- |
+| Spam               | 24   | 6        |
+| Not spam           | 5    | 65       |
+
+This matrix makes it possible to see which kinds of mistakes the model makes.
+
+## 10.2 Accuracy
+
+Accuracy measures the proportion of all predictions that are correct.
+
+\\[ Accuracy=\frac{TP+TN}{TP+TN+FP+FN} \\]
+
+Using the example:
+
+\\[ Accuracy=\frac{24+65}{100}=0.89 \\]
+
+The model has 89% accuracy.
+
+Accuracy is useful when classes are reasonably balanced and the costs of different mistakes are comparable. It can be misleading when the dataset is highly imbalanced.
+
+## 10.3 Precision
+
+Precision measures the proportion of predicted-positive examples that are actually positive.
+
+\\[ Precision=\frac{TP}{TP+FP} \\]
+
+In the spam example:
+
+\\[ Precision=\frac{24}{24+5}\approx0.828 \\]
+
+Approximately 82.8% of emails flagged as spam were actually spam.
+
+When is precision important?
+
+Consider an email system that might accidentally send important customer emails to the spam folder. High precision helps reduce false spam alerts.
+
+## 10.4 Recall
+
+Recall measures the proportion of actual positive examples that the model successfully identifies.
+
+\\[ Recall=\frac{TP}{TP+FN} \\]
+
+For the example:
+
+\\[ Recall=\frac{24}{24+6}=0.80 \\]
+
+The model detects 80% of all spam emails.
+
+When is recall important?
+
+Recall is important when missing a positive case is costly, such as failing to detect harmful content or a fraudulent message.
+
+## 10.5 F1-score
+
+The F1-score is the harmonic mean of precision and recall.
+
+\\[ F1=2\cdot\frac{Precision\cdot Recall}{Precision+Recall} \\]
+
+Using the example:
+
+\\[ F1\approx0.814 \\]
+
+F1 balances precision and recall, but it does not incorporate true negatives directly.
+
+For imbalanced multiclass datasets, you should inspect class-specific scores and choose a suitable averaging method:
+
+- Macro F1: Calculates the F1-score for each class and gives every class equal weight.
+- Weighted F1: Weights each class's F1-score by its support, or number of true examples.
+- Micro F1: Aggregates counts across classes before computing the score.
+
+For ordinary single-label multiclass classification, micro F1 equals accuracy when evaluated over the same complete set of examples.
+
+## 10.6 ROC-AUC
+
+ROC-AUC evaluates how well a model ranks positive examples above negative examples across different decision thresholds.
+
+The ROC curve plots:
+
+\\[ TPR=\frac{TP}{TP+FN} \\]
+
+against
+
+\\[ FPR=\frac{FP}{FP+TN} \\]
+
+AUC is the area under this curve.
+
+A higher AUC generally indicates better ranking performance. For highly imbalanced datasets, precision-recall curves can also provide valuable insight.
+
+AUC does not tell you which threshold is best for your application. You must select a threshold based on the costs of false positives and false negatives.
+
+## 10.7 Choosing the right metric
+
+| Goal                                           | Useful metrics                       |
+| ---------------------------------------------- | ------------------------------------ |
+| General balanced classification                | Accuracy, macro F1                   |
+| Spam detection with few false alarms           | Precision                            |
+| Detecting as many harmful messages as possible | Recall                               |
+| Imbalanced classification                      | Macro F1, per-class precision/recall |
+| Comparing ranking quality                      | ROC-AUC or average precision         |
+| Understanding specific mistakes                | Confusion matrix                     |
+
+For your projects, always inspect more than accuracy. A classifier with 95% accuracy can still perform poorly on the category you care about most.
+
+# 11. Improving a text classification model
+
+A baseline model is only the starting point. Here are the major techniques used to improve classification performance.
+
+## 11.1 Improve the training dataset
+
+High-quality labeled data is often more valuable than switching to a more complicated algorithm.
+
+Check for:
+
+- Incorrect labels.
+- Duplicate examples.
+- Missing or empty text.
+- Inconsistent labeling rules.
+- Very rare classes.
+- Training data that does not resemble the intended real-world input.
+
+For sentiment analysis, make sure that examples involving sarcasm, negation, mixed opinions, and neutral sentiment are represented when they matter to your use case.
+
+## 11.2 Tune TF-IDF parameters
+
+You can experiment with:
+
+- `ngram_range`: include word sequences.
+- `min_df`: remove very rare features.
+- `max_df`: remove terms appearing in a large proportion of documents.
+- `max_features`: limit vocabulary size.
+- `sublinear_tf`: apply logarithmic term-frequency scaling.
+- `max_features` and `min_df` together: manage the size of the feature space.
+
+Do not assume that larger vocabularies or more n-grams always improve performance.
+
+## 11.3 Tune the classification algorithm
+
+For Logistic Regression, `C` controls the inverse strength of regularization:
+
+- Smaller `C`: stronger regularization.
+- Larger `C`: weaker regularization.
+
+For Linear SVM, `C` also controls the trade-off between margin size and training errors.
+
+A grid search can help select these parameters using cross-validation.
+
+```
+from sklearn.model_selection import GridSearchCV, StratifiedKFoldpipeline = Pipeline([    (        "tfidf",        TfidfVectorizer()    ),    (        "classifier",        LogisticRegression(            max_iter=1000,            random_state=42        )    )])param_grid = {    "tfidf__ngram_range": [(1, 1), (1, 2)],    "tfidf__min_df": [1, 2],    "classifier__C": [0.1, 1.0, 10.0]}cv = StratifiedKFold(    n_splits=5,    shuffle=True,    random_state=42)grid_search = GridSearchCV(    estimator=pipeline,    param_grid=param_grid,    scoring="f1_macro",    cv=cv,    n_jobs=-1)grid_search.fit(X_train, y_train)print("Best parameters:")print(grid_search.best_params_)print("Best cross-validation F1:")print(grid_search.best_score_)best_model = grid_search.best_estimator_print(classification_report(    y_test,    best_model.predict(X_test),    zero_division=0))
+```
+
+This evaluates different combinations using the training data, then evaluates the selected model on the held-out test set.
+
+For this example, the smallest dataset is far too small for reliable five-fold tuning. With a real dataset, use enough examples per class to support the folds. Also, do not repeatedly tune against the test set: keep it as a final evaluation set.
+
+## 11.4 Handle class imbalance
+
+If some classes have far fewer examples, possible approaches include:
+
+- Collecting more examples for minority classes.
+- Using class weights.
+- Oversampling or undersampling where appropriate.
+- Adjusting decision thresholds.
+- Evaluating macro F1 and minority-class recall.
+
+For Logistic Regression:
+
+```
+LogisticRegression(    max_iter=1000,    class_weight="balanced")
+```
+
+This increases the relative influence of underrepresented classes during training. It does not guarantee better performance, so validate the effect on the appropriate metrics.
+
+## 11.5 Use pretrained embeddings or transformers
+
+If TF-IDF models fail to capture contextual meaning, try sentence embeddings or a pretrained transformer.
+
+For instance, a pretrained BERT model can produce contextual representations that account for surrounding words. Fine-tuning the model on labeled examples can adapt it to your classification task.
+
+However, transformers are not automatically better. A TF-IDF + Linear SVM baseline may be faster, cheaper, and competitive on smaller, domain-specific datasets.
+
+# 12. Multiclass classification using scikit-learn
+
+Let's consider classifying news articles into three categories: sports, technology, and politics.
+
+```
+import pandas as pdnews_df = pd.DataFrame({    "text": [        "The team won the football championship",        "The player scored a brilliant goal",        "The government announced a new policy",        "The minister addressed parliament",        "The new processor improves computer performance",        "Researchers developed a new AI model"    ],    "category": [        "sports",        "sports",        "politics",        "politics",        "technology",        "technology"    ]})
+```
+
+The model structure is almost identical to binary classification.
+
+```
+from sklearn.model_selection import train_test_splitfrom sklearn.pipeline import Pipelinefrom sklearn.feature_extraction.text import TfidfVectorizerfrom sklearn.linear_model import LogisticRegressionX = news_df["text"]y = news_df["category"]X_train, X_test, y_train, y_test = train_test_split(    X,    y,    test_size=0.33,    random_state=42,    stratify=y)news_classifier = Pipeline([    ("tfidf", TfidfVectorizer(ngram_range=(1, 2))),    ("model", LogisticRegression(max_iter=1000))])news_classifier.fit(X_train, y_train)print(    news_classifier.predict([        "Scientists created a powerful artificial intelligence system"    ]))
+```
+
+Logistic Regression automatically handles multiclass classification using a suitable multiclass strategy.
+
+This tiny dataset only demonstrates the syntax. It is not sufficient to train a useful news classifier, and the test score would have high uncertainty.
+
+# 13. Multilabel classification using scikit-learn
+
+Suppose each movie description can have several genres. We want to predict whether the description belongs to Action, Comedy, or Drama.
+
+A convenient traditional approach is `OneVsRestClassifier` with Logistic Regression.
+
+```
+from sklearn.preprocessing import MultiLabelBinarizerfrom sklearn.feature_extraction.text import TfidfVectorizerfrom sklearn.multiclass import OneVsRestClassifierfrom sklearn.linear_model import LogisticRegressionfrom sklearn.pipeline import Pipelinedescriptions = [    "A superhero fights criminals in an action packed adventure",    "Friends get into funny situations in a comedy",    "A family faces emotional struggles and drama",    "A superhero comedy about friends saving the world",    "An emotional action film about a family"]genres = [    ["Action"],    ["Comedy"],    ["Drama"],    ["Action", "Comedy"],    ["Action", "Drama"]]mlb = MultiLabelBinarizer()Y = mlb.fit_transform(genres)X_train, X_test, Y_train, Y_test = train_test_split(    descriptions,    Y,    test_size=0.4,    random_state=42)multilabel_model = Pipeline([    ("tfidf", TfidfVectorizer(ngram_range=(1, 2))),    (        "classifier",        OneVsRestClassifier(            LogisticRegression(max_iter=1000)        )    )])multilabel_model.fit(X_train, Y_train)predicted_labels = multilabel_model.predict(X_test)print(mlb.classes_)print(predicted_labels)
+```
+
+Here, `MultiLabelBinarizer` converts genre lists into a binary matrix.
+
+For example:
+
+| Movie                 | Action | Comedy | Drama |
+| --------------------- | ------ | ------ | ----- |
+| Superhero comedy      | 1      | 1      | 0     |
+| Emotional action film | 1      | 0      | 1     |
+| Family drama          | 0      | 0      | 1     |
+
+Unlike multiclass classification, the model does not need to choose only one category.
+
+In a real application, evaluate multilabel predictions with metrics such as micro/macro F1, per-label precision and recall, and Hamming loss. The default threshold and the model's output behavior should be considered carefully.
+
+# 14. Using text classification with deep learning and transformers
+
+Traditional machine learning is an excellent starting point, but let's understand how a modern NLP classification system works.
+
+A typical neural text classification pipeline is:
+
+Raw text
+
+"I really enjoyed this movie"
+
+Tokenizer
+
+Convert text into token IDs
+
+Embedding and encoder layers
+
+Learn contextual representations
+
+Classification head
+
+Convert representation into class scores
+
+Predicted label
+
+Positive sentiment
+
+## 14.1 Using a pretrained sentiment classifier
+
+The Hugging Face Transformers library provides pretrained classification pipelines.
+
+Install the packages:
+
+```
+pip install transformers torch
+```
+
+Example:
+
+```
+from transformers import pipelineclassifier = pipeline(    "sentiment-analysis",    model="distilbert/distilbert-base-uncased-finetuned-sst-2-english")results = classifier([    "This movie was absolutely brilliant!",    "I disliked the story and the acting."])print(results)
+```
+
+The results contain a predicted label and a score for each input.
+
+This particular pretrained model is intended for English positive/negative sentiment classification. It does not automatically solve arbitrary tasks such as classifying news categories or movie genres.
+
+For a custom task, you generally need a suitable pretrained model and labeled data for fine-tuning, or embeddings paired with a separate classifier.
+
+When to use transformers: Consider them when contextual meaning is important, a suitable pretrained model exists, and you have enough computing resources. For a first practical baseline, TF-IDF and Logistic Regression remain excellent choices.
+
+# 15. Saving and loading your trained classifier
+
+When your model is ready, you can save it and use it later without retraining every time.
+
+Because the Pipeline contains both TF-IDF and Logistic Regression, you only need to save the complete Pipeline.
+
+```
+import joblibjoblib.dump(    text_classifier,    "text_classifier.joblib")
+```
+
+Load it in another Python session:
+
+```
+import joblibloaded_model = joblib.load(    "text_classifier.joblib")reviews = [    "The movie was excellent",    "The movie was disappointing"]predictions = loaded_model.predict(reviews)print(predictions)
+```
+
+The loaded Pipeline automatically converts raw text into TF-IDF features before making predictions.
+
+Security note: Only load joblib or pickle files from trusted sources because loading them can execute arbitrary code. Also preserve your dependency versions and validate the model before deployment.
+
+# 16. Deploying a text classification model
+
+A trained classifier can be exposed through an API so that a frontend application can send text and receive predictions.
+
+For example, using FastAPI:
+
+```
+pip install fastapi uvicorn joblib
+```
+
+Create `main.py`:
+
+```
+import joblibfrom fastapi import FastAPIfrom pydantic import BaseModel, Fieldapp = FastAPI()model = joblib.load("text_classifier.joblib")class TextRequest(BaseModel):    text: str = Field(min_length=1, max_length=10000)@app.post("/predict")def predict(request: TextRequest):    prediction = model.predict([request.text])[0]    result = {        "text": request.text,        "prediction": str(prediction)    }    if hasattr(model, "predict_proba"):        probabilities = model.predict_proba([request.text])[0]        result["probabilities"] = {            str(label): float(probability)            for label, probability in zip(                model.classes_,                probabilities            )        }    return result
+```
+
+Run the application:
+
+```
+uvicorn main:app --reload
+```
+
+Then open `http://127.0.0.1:8000/docs` to test the endpoint through FastAPI's interactive documentation.
+
+This is a basic local demonstration. A production API also needs suitable error handling, input validation, authentication where required, resource limits, logging, and monitoring.
+
+# 17. Common mistakes in text classification
+
+These are particularly important when building your first NLP projects.
+
+1\. Fitting the vectorizer before splitting the data
+
+This leaks information about the test vocabulary into training. Split first, then fit the vectorizer on training text only. A Pipeline helps enforce this separation.
+
+2\. Removing stop words indiscriminately
+
+Removing `not` from "not good" can reverse sentiment. Preserve negation and other meaningful features.
+
+3\. Evaluating only with accuracy
+
+A model can perform well on the majority class while failing on minority classes. Check per-class precision, recall, F1, and the confusion matrix.
+
+4\. Using too little training data
+
+A tiny demonstration dataset cannot represent the language patterns found in real reviews, emails, or documents. Use sufficient, diverse, accurately labeled examples.
+
+5\. Creating a new vectorizer for every prediction
+
+The vocabulary and feature ordering must remain consistent. Reuse the fitted vectorizer or, preferably, save the complete Pipeline.
+
+6\. Allowing duplicate samples across the split
+
+Duplicate or near-duplicate texts in training and testing can inflate evaluation scores. Deduplicate where appropriate, and consider group-based splitting when multiple records come from the same source.
+
+7\. Using a random split for every problem
+
+If you predict future messages or news, a chronological split may better represent actual deployment. The splitting strategy should match how the model will be used.
+
+# 18. A practical learning roadmap
+
+Since you are learning NLP progressively, I recommend working through text classification in this order.
+
+## Your progress checklist
+
+0/9 complete
+
+1\. Understand classification types
+
+Binary, multiclass and multilabel classification.
+
+2\. Implement Bag of Words
+
+Use CountVectorizer and inspect the document-term matrix.
+
+3\. Implement TF-IDF
+
+Experiment with n-grams, min_df and max_df.
+
+4\. Train traditional classifiers
+
+Compare Multinomial Naive Bayes, Logistic Regression and Linear SVM.
+
+5\. Evaluate performance
+
+Study precision, recall, F1, confusion matrices and ROC-AUC.
+
+6\. Build a complete project
+
+Train and evaluate a movie-review sentiment classifier.
+
+7\. Tune the model
+
+Use cross-validation, GridSearchCV and appropriate metrics.
+
+8\. Learn embeddings and transformers
+
+Move from Word2Vec to sentence embeddings and BERT fine-tuning.
+
+9\. Deploy your model
+
+Save the Pipeline and expose predictions through FastAPI.
+
+## Final summary
+
+Text classification converts text into categories using a combination of text representation and a learning algorithm.
+
+The fundamental workflow is:
+
+1. Collect labeled text.
+2. Split it into training and testing sets.
+3. Preprocess the text when necessary.
+4. Convert the text into features using BoW, TF-IDF, or embeddings.
+5. Train a classifier.
+6. Evaluate it using appropriate metrics.
+7. Tune, save, and deploy the model.
+
+The most useful first implementation to master is TF-IDF + Logistic Regression in a scikit-learn Pipeline. Once you understand that workflow thoroughly, compare it against Naive Bayes and Linear SVM, then move to Word2Vec, sentence embeddings, and transformer-based classification.
